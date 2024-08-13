@@ -1,6 +1,6 @@
 package main
 
-import vms "github.com/easy-cloud-Knet/KWS_Control/VMS"
+import vms "github.com/easy-cloud-Knet/KWS_Control/vm"
 
 
 

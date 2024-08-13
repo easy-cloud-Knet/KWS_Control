@@ -19,6 +19,7 @@ type Computer struct {
 
 type machines interface{
     CheckRunning()
+    GetStatus()
 }
 
 

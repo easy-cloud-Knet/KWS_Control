@@ -96,3 +96,4 @@ func statusString(isAlive bool) string {
     }
     return "down"
 }
+
