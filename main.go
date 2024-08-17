@@ -1,21 +1,24 @@
 package main
 
 import (
-	WorkerConn "github.com/easy-cloud-Knet/KWS_Control/api/WorkerCont"
+	_ "os"
+
 	api "github.com/easy-cloud-Knet/KWS_Control/api/server"
+	WorkerConn "github.com/easy-cloud-Knet/KWS_Control/api/taskPool"
 	vms "github.com/easy-cloud-Knet/KWS_Control/vm"
 )
 
 
 
 func main(){
+	aa:= make(chan int)
 	var TaskHandlersPool WorkerConn.TaskHandler
 	WorkerConn.InitWorkers(&TaskHandlersPool) 
-	vms.HeartBeatSensor()
+	go vms.HeartBeatSensor()
 
-	go api.Server(8080,&TaskHandlersPool )
-
-	
+	go api.Server(8080,&TaskHandlersPool)
+	WorkerConn.PsudoRequestSender(&TaskHandlersPool)
+	<-aa
 }
 
 func init(){
