@@ -1,13 +1,14 @@
 package vms
 
 import (
-	"github.com/easy-cloud-Knet/KWS_Control/api/requester"
+	"fmt"
+	"net/http"
 )
 
+
 func (c * Computer)UpdateVMList (VMPoolUnallocated []*VM, VMPoolallocated []*VM){
-		var VMList []requester.VMList
-	
-		VMList=requester.GetVMList(c.IP)
+
+		VMList:=GetVMList(c.IP)
 
 		for _,i := range VMList{
 			if i.IsAlive==true{
@@ -17,3 +18,18 @@ func (c * Computer)UpdateVMList (VMPoolUnallocated []*VM, VMPoolallocated []*VM)
 			}
 		}
 	}
+
+
+
+func GetVMList(IP string) []VM {
+	resp , err := http.Get(IP+"/getStatus")
+	if err!= nil{
+		panic(err)
+	}
+	//resp handle
+	fmt.Println(resp)
+
+	var VML []VM
+	return VML
+}
+
