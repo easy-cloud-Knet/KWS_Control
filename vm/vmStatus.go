@@ -1,11 +1,19 @@
 package vms
 
+import (
+	"github.com/easy-cloud-Knet/KWS_Control/api/requester"
+)
 
+func (c * Computer)UpdateVMList (VMPoolUnallocated []*VM, VMPoolallocated []*VM){
+		var VMList []requester.VMList
+	
+		VMList=requester.GetVMList(c.IP)
 
-func (c * Computer)GetStatus (){
+		for _,i := range VMList{
+			if i.IsAlive==true{
 
-}
-
-func (v * VM)GetStatus (){
-
-}
+			}else{
+				
+			}
+		}
+	}

@@ -9,17 +9,15 @@ import (
 )
 
 
-var Computers []Computer
-
-func HeartBeatSensor() {
+func HeartBeatSensor(computers []Computer)  {
     for {
         var wg sync.WaitGroup
-        for i := range Computers {
+        for i := range computers {
             wg.Add(1)
             go func(c *Computer) {
                 defer wg.Done()
                 checkComputer(c)
-            }(&Computers[i])
+            }(&computers[i])
         }
         wg.Wait()
         time.Sleep(time.Second * 10)
@@ -41,7 +39,7 @@ func checkComputer(c *Computer) {
         var vmWg sync.WaitGroup
         for i := range c.Allocated {
             vmWg.Add(1)
-            go func(v *VM) {
+            go func(v * VM) {
                 defer vmWg.Done()
                 checkVM(v)
             }(&c.Allocated[i])

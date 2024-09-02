@@ -2,11 +2,13 @@ package WorkerCont
 
 
 
-func (t * TaskWorker) updateStatus(){
+func (t * TaskWorker) UpdateStatus(){
 }
-func (t * TaskWorker) createVM(){
+func (t * TaskWorker) CreateVM(){
 }
-func (t * TaskWorker) connectVM(){
+func (t * TaskWorker) ConnectVM(){
 }
-func (t * TaskWorker) deleteVM(){
+func (t * TaskWorker) DeleteVM(){
+}
+func (t * TaskWorker) GetStatus(){
 }

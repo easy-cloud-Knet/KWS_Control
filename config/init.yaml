@@ -1,0 +1,28 @@
+version: 1
+apiServer:
+  outboundPort: 8000
+  totalWorker: 5
+  workLoadNum: 10
+Worker:
+  - name: worker1
+    ip: 192.168.64.5
+    mac: 111.111.111.111.111.111
+    port: 8080
+    vm:
+      - name: vm1
+        ram: 8
+        vcpu: 4
+      - name: vm1
+        ram: 8
+        vcpu: 4
+  - name: worker2
+    ip: 192.168.64.6
+    mac: 111.111.111.111.111.111
+    port: 8080
+    vm:
+      - name: vm1
+        ram: 8
+        vcpu: 4
+      - name: vm1
+        ram: 8
+        vcpu: 4

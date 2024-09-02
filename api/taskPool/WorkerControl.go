@@ -1,7 +1,9 @@
 package WorkerCont
 
 import (
+	"context"
 	"fmt"
+	"sync"
 	"time"
 )
 
@@ -18,6 +20,7 @@ const(
 	CreateV
 	ConnectV
 	DeleteV
+	GetStatus
 )
 
 
@@ -27,14 +30,15 @@ type Task struct{
 }
 
 type TaskWorker struct{
-	tasksLength int8
+	taskLenMu sync.Mutex
+	tasksLength int
 	workLoads  chan Task
 	workerNum int
 }
 
 type TaskHandler struct{
 	TaskHandlersList []*TaskWorker
-	TaskPool []*Task
+	// TaskPool []*Task
 	workingIndex int
 }
 
@@ -42,7 +46,7 @@ func InitWorkers(pool *TaskHandler){
 	//pool *TaskHandler as args
 	pool.TaskHandlersList =make([]*TaskWorker, NUM_OF_TASK_HANDLER)
 	pool.workingIndex=0
-	pool.TaskPool=make([]*Task,10)
+	// pool.TaskPool=make([]*Task,10)
 	
 	for i :=0;i< NUM_OF_TASK_HANDLER; i++{
 		pool.TaskHandlersList[i]= &TaskWorker{
@@ -57,6 +61,7 @@ func InitWorkers(pool *TaskHandler){
 
 func (t*TaskWorker) StartWorking(){
 	for{
+		ctx:= context.Background()
 		select  {
 			case work,ok:=<-t.workLoads:{
 				if !ok{
@@ -66,38 +71,51 @@ func (t*TaskWorker) StartWorking(){
 					switch work.FunctionName{
 					case CreateV:
 						t.tasksLength--
-						t.CreateVMTest()
+						t.CreateVMTest(ctx)
 					case UpdateStat:
 						t.tasksLength--	
-						t.UpdateStatusTest()
+						t.UpdateStatusTest(ctx)
 					case ConnectV:
 						t.tasksLength--
-						t.ConnectVMTest()
+						t.ConnectVMTest(ctx)
 					case DeleteV:
 						t.tasksLength--
-						t.DeleteVMTest()
+						t.DeleteVMTest(ctx)
+					case GetStatus:
+						t.tasksLength--
+						t.GetStatusTest(ctx)
 					default:
 						fmt.Printf("undefined task")
 					}
 				}
 			}
 		default:
-			fmt.Println("work Done, waiting")
-			time.Sleep(time.Second*3)
+			// fmt.Println("work Done, waiting")
+			time.Sleep(time.Microsecond*300)
 		}
 	}
 	}
 	
 
 
-
-func (t *TaskHandler)WorkerAllocate(task Task, ){
-	t.workingIndex=t.workingIndex%NUM_OF_TASK_HANDLER
-	t.TaskHandlersList[t.workingIndex].workLoads<-task
-	t.TaskHandlersList[t.workingIndex].tasksLength++;
-	t.workingIndex++
-	
-}
+	func (t *TaskHandler) WorkerAllocate(task Task) {
+		for {
+			workerIndex := t.workingIndex % NUM_OF_TASK_HANDLER
+			worker := t.TaskHandlersList[workerIndex]
+			
+			worker.taskLenMu.Lock()
+			if worker.tasksLength < 9 {
+				worker.workLoads <- task
+				worker.tasksLength++
+				fmt.Printf("Allocated task to worker %d. Current tasks: %d\n", workerIndex, worker.tasksLength)
+				worker.taskLenMu.Unlock()
+				t.workingIndex = (t.workingIndex + 1) % NUM_OF_TASK_HANDLER
+				return
+			}
+			worker.taskLenMu.Unlock()
+			t.workingIndex = (t.workingIndex + 1) % NUM_OF_TASK_HANDLER
+		}
+	}
 
 
 

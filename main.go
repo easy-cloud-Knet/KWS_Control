@@ -11,14 +11,13 @@ import (
 
 
 func main(){
-	aa:= make(chan int)
 	var TaskHandlersPool WorkerConn.TaskHandler
 	WorkerConn.InitWorkers(&TaskHandlersPool) 
-	go vms.HeartBeatSensor()
 
 	go api.Server(8080,&TaskHandlersPool)
 	WorkerConn.PsudoRequestSender(&TaskHandlersPool)
-	<-aa
+
+	select {}
 }
 
 func init(){

@@ -1,43 +1,45 @@
 package api
 
 import (
-	"io"
+	"net/http"
 	"strconv"
 
 	WorkerConn "github.com/easy-cloud-Knet/KWS_Control/api/taskPool"
-	"github.com/gin-gonic/gin"
 )
+
 
 func Server(portNum int, taskPool *WorkerConn.TaskHandler ){
 	// main server와 통신하기 위한 http 서버
-	gin.SetMode(gin.ReleaseMode)
-	gin.DefaultWriter = io.Discard
-	router:=gin.Default()
+	// gin.DefaultWriter = io.Discard
 
+	http.HandleFunc("GET /getStatus",func(w http.ResponseWriter, b *http.Request){
+		taskPool.WorkerAllocate(WorkerConn.Task{ 
+			FunctionName: WorkerConn.GetStatus,
+			Arguments : []interface{}{},		
+	})
+	})
 
-
-	router.GET("/CreateVM", func(c *gin.Context){
+	http.HandleFunc("GET /CreateVM",func(w http.ResponseWriter, b *http.Request){
 		taskPool.WorkerAllocate(WorkerConn.Task{ 
 			FunctionName: WorkerConn.CreateV,
 			Arguments : []interface{}{},		
 	})
 	})
-
-	router.GET("/DeleteVM", func(c *gin.Context){
+	http.HandleFunc("GET /DeleteVM",func(w http.ResponseWriter, b *http.Request){
 		taskPool.WorkerAllocate(WorkerConn.Task{ 
 			FunctionName: WorkerConn.DeleteV,
 			Arguments : []interface{}{},
 
 		})
 	})
-	router.GET("/ConnectVM", func(c *gin.Context){
+	http.HandleFunc("GET /ConnectVM",func(w http.ResponseWriter, b *http.Request){
 		taskPool.WorkerAllocate(WorkerConn.Task{ 
 			FunctionName: WorkerConn.ConnectV,
 			Arguments : []interface{}{},
 
 		})
 	})
-	router.GET("/CheckVMHealth", func(c *gin.Context){
+	http.HandleFunc("GET /CheckVMHealth", func(w http.ResponseWriter, b *http.Request){
 		taskPool.WorkerAllocate(WorkerConn.Task{ 
 			FunctionName: WorkerConn.UpdateStat,
 			Arguments : []interface{}{},
@@ -45,5 +47,9 @@ func Server(portNum int, taskPool *WorkerConn.TaskHandler ){
 		})
 	})
 
-	router.Run(":"+strconv.Itoa(portNum))
+
+	http.ListenAndServe(":"+strconv.Itoa(portNum), nil)
+
+
+
 }
