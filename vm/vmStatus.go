@@ -8,15 +8,15 @@ import (
 
 func (c * Computer)UpdateVMList (VMPoolUnallocated []*VM, VMPoolallocated []*VM){
 
-		VMList:=GetVMList(c.IP)
+		// VMList:=GetVMList(c.IP)
 
-		for _,i := range VMList{
-			if i.IsAlive==true{
+		// // for _,i := range VMList{
+		// // 	if i.IsAlive==true{
 
-			}else{
+		// // 	}else{
 				
-			}
-		}
+		// // 	}
+		// // }
 	}
 
 

@@ -31,10 +31,9 @@ func InitializeDevices() {
 
 
     Computers = append(Computers, COM1, COM2)
-    
+
     for _,c :=range Computers{
         c.UpdateVMList(VMPoolAllocated,VMPoolUnallocated)
-        
     }
 
 	go HeartBeatSensor(Computers)
