@@ -1,11 +1,39 @@
 package vms
 
+import (
+	libvirt "libvirt.org/go/libvirt"
+)
+
+
+
+
+type  UUID string
+
+
+type InfraContext struct{
+     Computers []Computer
+     VMPoolUnallocated []*VM
+     VMPoolAllocated []*VM
+     VMPool map[UUID]*VM
+}
+
+type InfraManage interface{
+    UpdateList()
+}
+
+type VMInfo struct{
+    State libvirt.DomainState `json:"state"`
+    MaxMem uint64 `json:"maxmem"`
+    Memory uint64 `json:"memory"`
+    NrVirtCpu uint `json:"nrVirtCpu"`
+    CpuTime uint64 `json:"cpuTime"`
+    UUID UUID `json:"uuid"`
+    IP string `json:"ip"`
+}
+
 
 type VM struct {
-    Name        string `json:"name"`
-    Memory      int16   `json:"memory"`
-    Disk        int16   `json:"disk"`
-    IP          string  `json:"ip"`
+    VMInfo VMInfo `json:"vmInfo"`
     IsAlive     bool    `json:"isAlive"`
     IsAllocated bool    `json:"isAllocated"`
     IsLocatedAt Computer `json:"isLocatedAt"`
@@ -19,10 +47,10 @@ type Computer struct {
     IsAlive   bool  `json:"isAlive"`
 }
 
-type machines interface{
-    CheckRunning()
-    GetStatus()
-}
+// type machines interface{
+//     CheckRunning()
+//     GetStatus()
+// }
 
 
 // type apiServer struct{

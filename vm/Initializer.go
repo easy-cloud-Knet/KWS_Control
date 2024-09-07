@@ -1,6 +1,8 @@
 package vms
 
 import (
+	"sync"
+
 	_ "gopkg.in/yaml.v3"
 )
 
@@ -8,14 +10,11 @@ import (
 
 
 
-func InitializeDevices() {
+func InitializeDevices(InfraCon *InfraContext) {
 
 	// config 파일이나 데이터베이스에서 읽어와야 함.
 	//추후에 테라폼 같은 프로젝트 사용할 수도? 
-    var Computers []Computer
-    var VMPoolUnallocated []*VM
-    var VMPoolAllocated []*VM
-
+  var initSync sync.Once
 
     COM1 := Computer{
         Name:        "worker1",
@@ -30,12 +29,10 @@ func InitializeDevices() {
 
 
 
-    Computers = append(Computers, COM1, COM2)
+    InfraCon.Computers = append(InfraCon.Computers, COM1, COM2)
 
-    for _,c :=range Computers{
-        c.UpdateVMList(VMPoolAllocated,VMPoolUnallocated)
-    }
+    InfraCon.UpdateList(&initSync)
 
-	go HeartBeatSensor(Computers)
+	go HeartBeatSensor(InfraCon.Computers)
 
 }
