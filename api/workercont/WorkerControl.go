@@ -6,7 +6,6 @@ import (
 	"sync"
 	"time"
 
-	WorkerCont "github.com/easy-cloud-Knet/KWS_Control/api/workercont"
 	vms "github.com/easy-cloud-Knet/KWS_Control/vm"
 )
 
@@ -27,36 +26,33 @@ const(
 )
 
 
-type Task[T any] struct{
+
+type Task struct{
 	FunctionName functionName 
-	TaskSpecific TaskJustifier[T]
+	TaskSpecific TaskJustifier
 }
 
-type TaskControl[T any] struct{
+type TaskControl struct{
 	Arguments []interface{}
-	ResultChann chan T
+	ResultChann chan TaskExecutionResult
 }
 
-type TaskInfraControlResult struct{
+type TaskExecutionResult struct{
 	IsSuccess bool
 	InfraContext vms.InfraContext 
-}
-
-type TaskVMControlResult struct{
-	IsSuccess bool
 	InVMContext vms.VMInfo 
 }
 
 
-type TaskJustifier[T any] interface{
-	ChanGetter() chan T
+type TaskJustifier interface{
+	ChanGetter() chan TaskExecutionResult
 	ChanSetter()
 }
 
 type TaskWorker struct{
 	taskLenMu sync.Mutex
 	tasksLength int
-	workLoads  chan Task[any]
+	workLoads  chan Task
 	workerNum int
 }
 
@@ -65,14 +61,14 @@ type TaskHandler struct{
 	workingIndex int
 }
 
-func (t *TaskControl[T]) ChanGetter() chan T{
+func (t *TaskControl) ChanGetter() chan TaskExecutionResult{
 	if t.ResultChann==nil{
 		t.ChanSetter()
 	}
 	return t.ResultChann	
 }
-func (t *TaskControl[T]) ChanSetter(){
-	vmChan :=make(chan T)
+func (t *TaskControl) ChanSetter(){
+	vmChan :=make(chan TaskExecutionResult)
 	t.ResultChann=vmChan
 }
 
@@ -88,7 +84,7 @@ func InitWorkers(pool *TaskHandler){
 	for i :=0;i< NUM_OF_TASK_HANDLER; i++{
 		pool.TaskHandlersList[i]= &TaskWorker{
 			tasksLength:0,
-			workLoads: make(chan Task[any],NUM_OF_ALL_WORKLOAD),
+			workLoads: make(chan Task,NUM_OF_ALL_WORKLOAD),
 			workerNum: i,
 		}
 		go pool.TaskHandlersList[i].StartWorking()
@@ -134,7 +130,7 @@ func (t*TaskWorker) StartWorking(){
 	}
 	
 
-func (t *TaskHandler) WorkerAllocate(task WorkerCont.TaskInfraControlResult) {
+func (t *TaskHandler)WorkerAllocate(task Task) {
 	for {
 		workerIndex := t.workingIndex % NUM_OF_TASK_HANDLER
 		worker := t.TaskHandlersList[workerIndex]
