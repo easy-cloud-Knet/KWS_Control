@@ -9,22 +9,22 @@ import (
 
 
 func PsudoRequestSender(workerHandler *TaskHandler){
-	con:=Task[any]{ 
+	con:=Task{ 
 		FunctionName: ConnectV,
 	}
-	del:=Task[any]{ 
+	del:=Task{ 
 		FunctionName: DeleteV,
 	}
-	cre:=Task[any]{ 
+	cre:=Task{ 
 		FunctionName: CreateV,
 	}
-	up:=Task[any]{ 
+	up:=Task{ 
 		FunctionName: UpdateStat,
 	}
-	stat:=Task[any]{ 
+	stat:=Task{ 
 		FunctionName: GetStatus,
 	}
-	taskList:=[]Task[any]{con,del,cre,up,stat} 
+	taskList:=[]Task{con,del,cre,up,stat} 
 	fmt.Print(len(taskList))
 	for j:=0; j<20; j++{
 		workerHandler.WorkerAllocate(taskList[j%(len(taskList))])

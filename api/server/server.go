@@ -5,12 +5,12 @@ import (
 	"net/http"
 	"strconv"
 
-	WorkerConn "github.com/easy-cloud-Knet/KWS_Control/api/workercont"
+	WorkerCont "github.com/easy-cloud-Knet/KWS_Control/api/workercont"
 	vms "github.com/easy-cloud-Knet/KWS_Control/vm"
 )
 
 
-func Server(portNum int, taskPool *WorkerConn.TaskHandler, contextStruct vms.InfraContext ){
+func Server(portNum int, taskPool *WorkerCont.TaskHandler, contextStruct vms.InfraContext ){
 	// main server와 통신하기 위한 http 서버
 	// gin.DefaultWriter = io.Discard
 
@@ -27,11 +27,11 @@ func Server(portNum int, taskPool *WorkerConn.TaskHandler, contextStruct vms.Inf
 			http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
 			return
 		}
-		workerControl:= &WorkerConn.TaskControl[WorkerConn.TaskInfraControlResult]{
-			ResultChann: make(chan WorkerConn.TaskInfraControlResult),
+		workerControl:= &WorkerCont.TaskControl{
+			ResultChann: make(chan WorkerCont.TaskExecutionResult),
 		}
-		newTask:=WorkerConn.Task[WorkerConn.TaskInfraControlResult]{
-			FunctionName: WorkerConn.GetStatus,	
+		newTask:=WorkerCont.Task{
+			FunctionName: WorkerCont.GetStatus,	
 			TaskSpecific: workerControl,
 		}
 		resultChannel:= newTask.TaskSpecific.ChanGetter()
@@ -44,30 +44,25 @@ func Server(portNum int, taskPool *WorkerConn.TaskHandler, contextStruct vms.Inf
 	})
 
 	http.HandleFunc("GET /CreateVM",func(w http.ResponseWriter, b *http.Request){
-		taskPool.WorkerAllocate(WorkerConn.Task{ 
-			FunctionName: WorkerConn.CreateV,
-			Arguments : []interface{}{},		
+		taskPool.WorkerAllocate(WorkerCont.Task{ 
+			FunctionName: WorkerCont.CreateV,
 	})
 	})
 	http.HandleFunc("GET /DeleteVM",func(w http.ResponseWriter, b *http.Request){
-		taskPool.WorkerAllocate(WorkerConn.Task{ 
-			FunctionName: WorkerConn.DeleteV,
-			Arguments : []interface{}{},
+		taskPool.WorkerAllocate(WorkerCont.Task{ 
+			FunctionName: WorkerCont.DeleteV,
 
 		})
 	})
 	http.HandleFunc("GET /ConnectVM",func(w http.ResponseWriter, b *http.Request){
-		taskPool.WorkerAllocate(WorkerConn.Task{ 
-			FunctionName: WorkerConn.ConnectV,
-			Arguments : []interface{}{},
+		taskPool.WorkerAllocate(WorkerCont.Task{ 
+			FunctionName: WorkerCont.ConnectV,
 
 		})
 	})
 	http.HandleFunc("GET /CheckVMHealth", func(w http.ResponseWriter, b *http.Request){
-		taskPool.WorkerAllocate(WorkerConn.Task{ 
-			FunctionName: WorkerConn.UpdateStat,
-			Arguments : []interface{}{},
-
+		taskPool.WorkerAllocate(WorkerCont.Task{ 
+			FunctionName: WorkerCont.UpdateStat,
 		})
 	})
 
