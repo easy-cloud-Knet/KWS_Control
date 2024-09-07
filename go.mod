@@ -5,6 +5,7 @@ go 1.21.3
 require (
 	github.com/go-ping/ping v1.1.0
 	gopkg.in/yaml.v3 v3.0.1
+	libvirt.org/go/libvirt v1.10006.0
 )
 
 require (

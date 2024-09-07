@@ -52,9 +52,9 @@ func checkVM(v *VM) {
     currState := v.CheckRunning()
     if v.IsAlive != currState {
         if !currState {
-            fmt.Printf("VM %s is down. Need to reallocate\n", v.Name)
+            fmt.Printf("VM %s is down. Need to reallocate\n", v.VMInfo.UUID)
         } else {
-            fmt.Printf("VM %s is now on. Analyzing startup reason\n", v.Name)
+            fmt.Printf("VM %s is now on. Analyzing startup reason\n", v.VMInfo.UUID)
         }
         v.IsAlive = currState
     }
@@ -67,8 +67,8 @@ func (c *Computer) CheckRunning() bool {
 }
 
 func (v *VM) CheckRunning() bool {
-    isAlive := PingCheck(v.IP)
-    fmt.Printf("VM %s is %s\n", v.Name, statusString(isAlive))
+    isAlive := PingCheck(v.VMInfo.IP)
+    fmt.Printf("VM %s is %s\n", v.VMInfo.UUID, statusString(isAlive))
     return isAlive
 }
 
