@@ -8,16 +8,6 @@ import (
 	"sync"
 )
 
-func (i * InfraContext)UpdateList(onceSync *sync.Once){
-	onceSync.Do( func(){
-		 for _ , c := range i.Computers{
-			c.GetVMList(i.VMPool)
-	}
-})
-}
-
-
-
 
 func (c *Computer)GetVMList(VMList map[UUID]*VM) {
 	if !strings.HasPrefix(c.IP, "http://") && !strings.HasPrefix(c.IP, "https://") {
@@ -34,8 +24,21 @@ func (c *Computer)GetVMList(VMList map[UUID]*VM) {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(string(body))
+	fmt.Println(body)
 }
+
+
+
+func (i * InfraContext)UpdateList(onceSync *sync.Once){
+	onceSync.Do( func(){
+		 for _ , c := range i.Computers{
+			c.GetVMList(i.VMPool)
+	}
+})
+}
+
+
+
 
 
 // func GetVMListAll() []VMList{

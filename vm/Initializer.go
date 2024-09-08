@@ -1,6 +1,7 @@
 package vms
 
 import (
+	"fmt"
 	"sync"
 
 	_ "gopkg.in/yaml.v3"
@@ -29,9 +30,10 @@ func InitializeDevices(InfraCon *InfraContext) {
 
 
 
-    InfraCon.Computers = append(InfraCon.Computers, COM1, COM2)
-
+    InfraCon.Computers = append(InfraCon.Computers,COM1,  COM2)
+    fmt.Println("hellot1")
     InfraCon.UpdateList(&initSync)
+    fmt.Println("hellot2")
 
 	go HeartBeatSensor(InfraCon.Computers)
 
