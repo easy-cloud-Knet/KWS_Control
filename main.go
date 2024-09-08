@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	_ "os"
 
 	api "github.com/easy-cloud-Knet/KWS_Control/api/server"
@@ -19,7 +20,7 @@ func main(){
 		VMPool:map[vms.UUID]*vms.VM{},
 		}
 	
-	
+	fmt.Println("hellot")
 	
 
 	var TaskHandlersPool WorkerConn.TaskHandler
