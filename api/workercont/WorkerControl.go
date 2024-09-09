@@ -44,15 +44,18 @@ type TaskExecutionResult struct{
 }
 
 
+
 type TaskJustifier interface{
 	ChanGetter() chan TaskExecutionResult
 	ChanSetter()
+	ArgumentsGetter() []interface{}
+	
 }
 
 type TaskWorker struct{
 	taskLenMu sync.Mutex
 	tasksLength int
-	workLoads  chan Task
+	workLoads  chan *Task
 	workerNum int
 }
 
@@ -71,7 +74,10 @@ func (t *TaskControl) ChanSetter(){
 	vmChan :=make(chan TaskExecutionResult)
 	t.ResultChann=vmChan
 }
-
+func (t *TaskControl) ArgumentsGetter()[]interface{}{
+	fmt.Println("errorrrrrrrr")
+	return t.Arguments
+}
 
 
 
@@ -84,7 +90,7 @@ func InitWorkers(pool *TaskHandler){
 	for i :=0;i< NUM_OF_TASK_HANDLER; i++{
 		pool.TaskHandlersList[i]= &TaskWorker{
 			tasksLength:0,
-			workLoads: make(chan Task,NUM_OF_ALL_WORKLOAD),
+			workLoads: make(chan *Task,NUM_OF_ALL_WORKLOAD),
 			workerNum: i,
 		}
 		go pool.TaskHandlersList[i].StartWorking()
@@ -115,7 +121,7 @@ func (t*TaskWorker) StartWorking(){
 						t.DeleteVMTest(ctx)
 						t.tasksLength--
 					case GetStatus:
-						t.GetStatus(ctx)
+						t.GetStatus(ctx, work)
 						t.tasksLength--
 					default:
 						fmt.Printf("undefined task")
@@ -130,7 +136,7 @@ func (t*TaskWorker) StartWorking(){
 	}
 	
 
-func (t *TaskHandler)WorkerAllocate(task Task) {
+func (t *TaskHandler)WorkerAllocate(task *Task) {
 	for {
 		workerIndex := t.workingIndex % NUM_OF_TASK_HANDLER
 		worker := t.TaskHandlersList[workerIndex]

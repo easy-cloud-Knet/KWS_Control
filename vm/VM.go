@@ -1,11 +1,12 @@
 package vms
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"strings"
-	"sync"
 )
 
 
@@ -24,17 +25,21 @@ func (c *Computer)GetVMList(VMList map[UUID]*VM) {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(body)
+	info:=[]VMInfo{}
+	err=json.Unmarshal(body,&info)
+	if err!=nil{
+		log.Panic(err)
+	}
+	fmt.Println(info)
 }
 
 
 
-func (i * InfraContext)UpdateList(onceSync *sync.Once){
-	onceSync.Do( func(){
+func (i * InfraContext)UpdateList(){
+	 go func(){
 		 for _ , c := range i.Computers{
 			c.GetVMList(i.VMPool)
-	}
-})
+	}}()
 }
 
 

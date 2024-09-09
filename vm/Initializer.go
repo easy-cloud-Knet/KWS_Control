@@ -2,7 +2,6 @@ package vms
 
 import (
 	"fmt"
-	"sync"
 
 	_ "gopkg.in/yaml.v3"
 )
@@ -15,7 +14,6 @@ func InitializeDevices(InfraCon *InfraContext) {
 
 	// config 파일이나 데이터베이스에서 읽어와야 함.
 	//추후에 테라폼 같은 프로젝트 사용할 수도? 
-  var initSync sync.Once
 
     COM1 := Computer{
         Name:        "worker1",
@@ -32,7 +30,7 @@ func InitializeDevices(InfraCon *InfraContext) {
 
     InfraCon.Computers = append(InfraCon.Computers,COM1,  COM2)
     fmt.Println("hellot1")
-    InfraCon.UpdateList(&initSync)
+    InfraCon.UpdateList()
     fmt.Println("hellot2")
 
 	go HeartBeatSensor(InfraCon.Computers)

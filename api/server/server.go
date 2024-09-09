@@ -10,7 +10,7 @@ import (
 )
 
 
-func Server(portNum int, taskPool *WorkerCont.TaskHandler, contextStruct vms.InfraContext ){
+func Server(portNum int, taskPool *WorkerCont.TaskHandler, contextStruct *vms.InfraContext ){
 	// main server와 통신하기 위한 http 서버
 	// gin.DefaultWriter = io.Discard
 
@@ -27,12 +27,13 @@ func Server(portNum int, taskPool *WorkerCont.TaskHandler, contextStruct vms.Inf
 			http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
 			return
 		}
-		workerControl:= &WorkerCont.TaskControl{
+		workerControl:= WorkerCont.TaskControl{
 			ResultChann: make(chan WorkerCont.TaskExecutionResult),
+			Arguments: []interface{}{contextStruct},
 		}
-		newTask:=WorkerCont.Task{
+		newTask:=&WorkerCont.Task{
 			FunctionName: WorkerCont.GetStatus,	
-			TaskSpecific: workerControl,
+			TaskSpecific: &workerControl,
 		}
 		resultChannel:= newTask.TaskSpecific.ChanGetter()
 		defer close(resultChannel)
@@ -44,24 +45,24 @@ func Server(portNum int, taskPool *WorkerCont.TaskHandler, contextStruct vms.Inf
 	})
 
 	http.HandleFunc("GET /CreateVM",func(w http.ResponseWriter, b *http.Request){
-		taskPool.WorkerAllocate(WorkerCont.Task{ 
+		taskPool.WorkerAllocate(&WorkerCont.Task{ 
 			FunctionName: WorkerCont.CreateV,
 	})
 	})
 	http.HandleFunc("GET /DeleteVM",func(w http.ResponseWriter, b *http.Request){
-		taskPool.WorkerAllocate(WorkerCont.Task{ 
+		taskPool.WorkerAllocate(&WorkerCont.Task{ 
 			FunctionName: WorkerCont.DeleteV,
 
 		})
 	})
 	http.HandleFunc("GET /ConnectVM",func(w http.ResponseWriter, b *http.Request){
-		taskPool.WorkerAllocate(WorkerCont.Task{ 
+		taskPool.WorkerAllocate(&WorkerCont.Task{ 
 			FunctionName: WorkerCont.ConnectV,
 
 		})
 	})
 	http.HandleFunc("GET /CheckVMHealth", func(w http.ResponseWriter, b *http.Request){
-		taskPool.WorkerAllocate(WorkerCont.Task{ 
+		taskPool.WorkerAllocate(&WorkerCont.Task{ 
 			FunctionName: WorkerCont.UpdateStat,
 		})
 	})

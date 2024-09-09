@@ -27,7 +27,7 @@ func PsudoRequestSender(workerHandler *TaskHandler){
 	taskList:=[]Task{con,del,cre,up,stat} 
 	fmt.Print(len(taskList))
 	for j:=0; j<20; j++{
-		workerHandler.WorkerAllocate(taskList[j%(len(taskList))])
+		workerHandler.WorkerAllocate(&taskList[j%(len(taskList))])
 	}
 }
 

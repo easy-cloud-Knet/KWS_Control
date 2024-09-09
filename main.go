@@ -26,7 +26,7 @@ func main(){
 	var TaskHandlersPool WorkerConn.TaskHandler
 	WorkerConn.InitWorkers(&TaskHandlersPool,) 
 	vms.InitializeDevices(&contextStruct)
-	go api.Server(8080,&TaskHandlersPool, contextStruct)
+	go api.Server(8080,&TaskHandlersPool, &contextStruct)
 	WorkerConn.PsudoRequestSender(&TaskHandlersPool)
 
 	select {}
