@@ -57,7 +57,7 @@ func (t *TaskWorker) StartWorking() {
 			switch work.FunctionName {
 			case CreateV:
 				if taskControl, ok := work.TaskSpecific.(*TaskControlCreateVM); ok {
-					t.CreateVM(taskControl)
+					t.CreateVM(taskControl, work.ControlInfra)
 				}
 			case UpdateStat:
 				t.UpdateStatusTest()
@@ -65,9 +65,7 @@ func (t *TaskWorker) StartWorking() {
 				t.ConnectVMTest()
 			case DeleteV:
 				if taskControl, ok := work.TaskSpecific.(*TaskControlDeleteVM); ok {
-					fmt.Println("2222")
-					t.DeleteVM(taskControl)
-					fmt.Println("3333")
+					t.DeleteVM(taskControl, work.ControlInfra)
 				}
 			case GetStatus:
 				t.GetStatus(work)

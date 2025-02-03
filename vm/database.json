@@ -1,0 +1,44 @@
+{
+  "Cores": [
+      {
+          "IP": "192.168.64.5",
+          "CoreInfoIdx": {
+              "Memory": 32000,
+              "Cpu": 16,
+              "Disk": 1000
+          },
+          "IsAlive": true,
+          "VMInfoIdx": {
+              "cc13cdc7-b1f5-3452-a33d-12cc4aaa51c0": {
+                  "IP_VM": ["192.168.1.101"],
+                  "UUID": "cc13cdc7-b1f5-3452-a33d-12cc4aaa51c0",
+                  "Memory": 4096,
+                  "Cpu": 2,
+                  "Disk": 50
+              }
+          },
+          "FreeMemory": 16000,
+          "FreeCPU": 8
+      },
+      {
+          "IP": "192.168.64.6",
+          "CoreInfoIdx": {
+              "Memory": 64000,
+              "Cpu": 32,
+              "Disk": 2000
+          },
+          "IsAlive": true,
+          "VMInfoIdx": {
+              "cc13cdc7-b1f5-3452-a33d-12cc4aaa51c1": {
+                  "IP_VM": ["192.168.1.102"],
+                  "UUID": "cc13cdc7-b1f5-3452-a33d-12cc4aaa51c1",
+                  "Memory": 8192,
+                  "Cpu": 4,
+                  "Disk": 100
+              }
+          },
+          "FreeMemory": 32000,
+          "FreeCPU": 16
+      }
+  ]
+}

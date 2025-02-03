@@ -21,7 +21,7 @@ type CreateVMParam struct {
 	DomType string     `json:"domType"`
 	DomName string     `json:"domName"`
 	Users   []UserInfo `json:"users"`
-	UUID    string     `json:"UUID"`
+	UUID    vms.UUID   `json:"UUID"`
 	OS      string     `json:"os"`
 	HWInfo  HWInfo     `json:"HWInfo"`
 	Network network
@@ -45,11 +45,12 @@ type network struct {
 	NetType int
 }
 
-//parameters for each functions
+//parameters for each functions -----------------------------------
 
 type Task struct {
 	FunctionName functionName
 	TaskSpecific TaskJustifier
+	ControlInfra *vms.ControlInfra
 }
 type TaskWorker struct {
 	taskLenMu   sync.Mutex
@@ -63,17 +64,16 @@ type TaskHandler struct {
 	workingIndex     int           // 현재 돌아가고 있는 스레드의 갯수
 } //테스크 임베딩, 필드 추가 필요
 
+//----------------------------------------------------------
+
 type TaskControlCreateVM struct {
 	ResultChan chan string
-	UUID       vms.UUID
 	Param      *CreateVMParam
-	Vms        *vms.ControlInfra
 	//추가 필요
 }
 
 type TaskControlDeleteVM struct {
 	ResultChan chan string
-	UUID       vms.UUID
 	Param      *DeletevmParam
 }
 
@@ -116,5 +116,6 @@ func (t *TaskControlDeleteVM) TaskUnparsor(r *http.Request) error {
 		//에러 정의 필요
 		return err
 	}
+	t.Param = &param
 	return nil
 }

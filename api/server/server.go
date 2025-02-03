@@ -12,7 +12,7 @@ import (
 	vms "github.com/easy-cloud-Knet/KWS_Control/vm"
 )
 
-func Server(portNum int, taskPool *WorkerCont.TaskHandler, contextStruct *vms.ControlInfra) error {
+func Server(portNum int, taskPool *WorkerCont.TaskHandler, controlInfra *vms.ControlInfra) error {
 	// main server와 통신하기 위한 http 서버
 	// gin.DefaultWriter = io.Discard
 	http.HandleFunc("Get /getStatus", func(w http.ResponseWriter, r *http.Request) {
@@ -31,6 +31,7 @@ func Server(portNum int, taskPool *WorkerCont.TaskHandler, contextStruct *vms.Co
 		newTask := &WorkerCont.Task{
 			FunctionName: WorkerCont.GetStatus,
 			TaskSpecific: workerControl,
+			ControlInfra: controlInfra,
 		}
 
 		taskPool.WorkerAllocate(newTask)
@@ -48,7 +49,6 @@ func Server(portNum int, taskPool *WorkerCont.TaskHandler, contextStruct *vms.Co
 		// TaskControlCreateVM 생성 및 요청 파싱
 		workerControl := &WorkerCont.TaskControlCreateVM{
 			ResultChan: make(chan string),
-			Vms:        contextStruct,
 		}
 		resultChannel := workerControl.ResultChan
 		defer close(resultChannel)
@@ -64,6 +64,7 @@ func Server(portNum int, taskPool *WorkerCont.TaskHandler, contextStruct *vms.Co
 		newTask := &WorkerCont.Task{
 			FunctionName: WorkerCont.CreateV,
 			TaskSpecific: workerControl,
+			ControlInfra: controlInfra,
 		}
 		taskPool.WorkerAllocate(newTask)
 
@@ -79,7 +80,6 @@ func Server(portNum int, taskPool *WorkerCont.TaskHandler, contextStruct *vms.Co
 	http.HandleFunc("/DeleteVM", func(w http.ResponseWriter, r *http.Request) {
 		workerControl := &WorkerCont.TaskControlDeleteVM{
 			ResultChan: make(chan string),
-			//Vms:        contextStruct,
 		}
 		resultChannel := workerControl.ResultChan
 		defer close(resultChannel)
@@ -124,10 +124,3 @@ func Server(portNum int, taskPool *WorkerCont.TaskHandler, contextStruct *vms.Co
 
 	return nil
 }
-
-/*
-회의 해봐야 하는 내용들
-1. VM 생성 완료 했을 때 벡에다가 리턴해야 하는게 뭔지?
-2. Core 컴퓨터가 실행되면 Control에 Core 정보 보내줘야함.
-
-*/
