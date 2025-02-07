@@ -3,6 +3,8 @@ package server
 import (
 	"encoding/json"
 	"fmt"
+
+	//"fmt"
 	//"io"
 	"net/http"
 	"strconv"
@@ -50,10 +52,12 @@ func Server(portNum int, taskPool *WorkerCont.TaskHandler, contextStruct *vms.Co
 			http.Error(w, "Failed to read or parse JSON", http.StatusBadRequest)
 			return
 		}
-
-		task := WorkerCont.NewCreateVMTask(&vms.Core{IP: "127.0.0.1", Port: 8080}, param) // TODO: core assignment
+		param.Network.Ips = []string{"14.5.51.8", "12.5.28.8"}
+		param.Network.NetType = 0
+		task := WorkerCont.NewCreateVMTask(&vms.Core{IP: "223.194.20.119", Port: 28779}, param) // TODO: core assignment
 		resp, err := task.Await()
 		if err != nil {
+			fmt.Println(err)
 			http.Error(w, "Failed to create VM", http.StatusInternalServerError)
 			return
 		}
@@ -65,33 +69,20 @@ func Server(portNum int, taskPool *WorkerCont.TaskHandler, contextStruct *vms.Co
 	})
 
 	http.HandleFunc("/DeleteVM", func(w http.ResponseWriter, r *http.Request) {
-		workerControl := &WorkerCont.TaskControlDeleteVM{
-			ResultChan: make(chan string),
-			//Vms:        contextStruct,
-		}
-		resultChannel := workerControl.ResultChan
-		defer close(resultChannel)
-
-		// JSON 파싱 및 에러 처리
-		if err := workerControl.TaskUnparsor(r); err != nil {
-			http.Error(w, "Failed to parse JSON", http.StatusBadRequest)
-			fmt.Printf("Error in TaskUnparsor: %v\n", err) // 필요 시 유지
+		param, err := util.UnmarshalBodyAndClose[WorkerCont.CreateVMParam](r.Body)
+		if err != nil {
+			http.Error(w, "Failed to read or parse JSON", http.StatusBadRequest)
 			return
 		}
-
-		// Task 생성 및 작업 할당
-		newTask := &WorkerCont.Task{
-			FunctionName: WorkerCont.DeleteV,
-			TaskSpecific: workerControl,
+		task := WorkerCont.NewDeleteVMTask(&vms.Core{IP: "10.5.12.2", Port: 8080}, param)
+		resp, err := task.Await()
+		if err != nil {
+			http.Error(w, "Failed to create VM", http.StatusInternalServerError)
+			return
 		}
-		taskPool.WorkerAllocate(newTask)
-
-		// 결과 처리 및 응답
-		result := <-resultChannel
 		encoder := json.NewEncoder(w)
-		if err := encoder.Encode(result); err != nil {
+		if err = encoder.Encode(resp); err != nil {
 			http.Error(w, "Failed to encode result", http.StatusInternalServerError)
-			return
 		}
 	})
 	http.HandleFunc("GET /ConnectVM", func(w http.ResponseWriter, b *http.Request) {
