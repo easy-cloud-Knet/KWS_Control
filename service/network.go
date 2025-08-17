@@ -43,7 +43,7 @@ func NewCmsClient() *CmsClient {
 func (c *CmsClient) CmsRequest(Subnet string) (*CmsResponse, error) {
 	log := util.GetLogger()
 
-	c.baseURL = fmt.Sprintf("http://%s/New/Instance", c.baseURL)
+	req_url := fmt.Sprintf("http://%s/New/Instance", c.baseURL)
 	reqBody := CmsRequest{Subnet: Subnet}
 	jsonBody, err := json.Marshal(reqBody)
 	if err != nil {
@@ -51,7 +51,7 @@ func (c *CmsClient) CmsRequest(Subnet string) (*CmsResponse, error) {
 		return nil, err
 	}
 
-	req, err := http.NewRequest("POST", c.baseURL, bytes.NewBuffer(jsonBody))
+	req, err := http.NewRequest("POST", req_url, bytes.NewBuffer(jsonBody))
 	if err != nil {
 		log.Error("CMS : failed to NewRequest: %w", err)
 		return nil, err
@@ -104,17 +104,21 @@ func (c *CmsClient) NewCmsSubnet(ctx *vms.ControlContext) (*CmsResponse, error) 
 	log := util.GetLogger()
 
 	last_subnet := ctx.Last_subnet
-
 	next_last_subnet := Find_subnet(last_subnet)
+	log.Info("NewCmsSubnet : next_last_subnet: %s", next_last_subnet)
 
 	temp, err := c.CmsRequest(next_last_subnet)
 	if err != nil {
 		log.Error("AddCmsSubnet : c.CmsRequest(subnet): %v", err)
 		return nil, err
 	}
-
+	_, err = ctx.DB.Exec("UPDATE subnet SET last_subnet = ? WHERE id = 1", next_last_subnet)
+	if err != nil {
+		log.Error("Failed to update last_subnet in database: %v", err)
+		return nil, err
+	}
+	ctx.Last_subnet = next_last_subnet
 	return temp, nil
-
 }
 
 func Find_subnet(last_subnet string) string {

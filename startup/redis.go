@@ -14,9 +14,9 @@ func InitializeRedis(ctx context.Context) (*redis.Client, error) {
 	log := util.GetLogger()
 
 	REDIS_HOST := os.Getenv("REDIS_HOST")
-	//if REDIS_HOST == "" {
+	if REDIS_HOST == "" {
 		REDIS_HOST = "localhost:6379"
-	//}
+	}
 
 	// Redis 클라이언트 생성
 	rdb := redis.NewClient(&redis.Options{
