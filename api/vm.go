@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"net/http"
+	"time"
 
 	"github.com/easy-cloud-Knet/KWS_Control/api/model"
 	"github.com/easy-cloud-Knet/KWS_Control/service"
@@ -145,33 +146,31 @@ func (c *handlerContext) redis(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer r.Body.Close()
-
-	key := string(req.UUID)
-
 	originalStatus := req.Status
 	normalizedStatus := model.ValidateAndNormalizeStatus(req.Status)
 
 	if originalStatus != normalizedStatus {
 		log.Warn("VM status normalized: UUID=%s, original='%s', normalized='%s'",
-			key, originalStatus, normalizedStatus, true)
+			req.UUID, originalStatus, normalizedStatus, true)
 	}
 
 	ctx := r.Context()
 
-	if err := c.rdb.Set(ctx, key, normalizedStatus, 0).Err(); err != nil {
-		http.Error(w, "Failed to update Redis", http.StatusInternalServerError)
-		log.Error("Redis SET failed: %v", err, true)
+	err := service.UpdateVMStatusInRedis(ctx, c.rdb, req.UUID, normalizedStatus, time.Now().Unix())
+	if err != nil {
+		http.Error(w, "Failed to update VM status in Redis", http.StatusInternalServerError)
+		log.Error("Failed to update VM status in Redis: %v", err, true)
 		return
 	}
 
-	storedValue, err := c.rdb.Get(ctx, key).Result()
+	storedValue, err := c.rdb.Get(ctx, string(req.UUID)).Result()
 	if err != nil {
 		http.Error(w, "Failed to get value from Redis", http.StatusInternalServerError)
 		log.Error("Redis GET failed: %v", err, true)
 		return
 	}
 
-	log.DebugInfo("Redis 확인 완료 - key: %s, value: %s", key, storedValue)
+	log.DebugInfo("Redis 확인 완료 - key: %s, value: %s", req.UUID, storedValue)
 
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write([]byte("VM status updated in Redis"))
