@@ -163,6 +163,15 @@ func (c *CoreClient) GetVMMemoryInfo(ctx context.Context, uuid structure.UUID) (
 	return response, nil
 }
 
+func (c *CoreClient) StartVM(ctx context.Context, req model.StartVMRequest) (model.StartVMResponse, error) {
+	var response model.StartVMResponse
+	err := c.doRequest(ctx, http.MethodPost, "/BOOTVM", req, &response)
+	if err != nil {
+		return model.StartVMResponse{}, err
+	}
+	return response, nil
+}
+
 func (c *CoreClient) ForceShutdownVM(ctx context.Context, req model.ForceShutdownVMRequest) (model.ForceShutdownVMResponse, error) {
 	var response model.ForceShutdownVMResponse
 	err := c.doRequest(ctx, http.MethodPost, "/forceShutDownUUID", req, &response)

@@ -67,6 +67,24 @@ func (c *handlerContext) shutdownVm(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+func (c *handlerContext) startVm(w http.ResponseWriter, r *http.Request) {
+	var req model.ApiStartVmRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+	defer r.Body.Close()
+
+	err := service.StartVM(req.UUID, c.context)
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
 func (c *handlerContext) vmStatus(w http.ResponseWriter, r *http.Request) {
 	log := util.GetLogger()
 

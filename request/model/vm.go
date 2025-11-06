@@ -71,6 +71,14 @@ type CreateVMResponse struct {
 	CpuTime   uint64 `json:"cpuTime"`
 }
 
+type StartVMRequest struct {
+	UUID structure.UUID `json:"UUID"`
+}
+
+type StartVMResponse struct {
+	Message string `json:"message"`
+}
+
 type DeleteVMResponse struct {
 }
 

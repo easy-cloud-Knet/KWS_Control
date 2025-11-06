@@ -9,6 +9,18 @@ type ApiDeleteVmRequest struct {
 type ApiShutdownVmRequest struct {
 	UUID structure.UUID `json:"uuid"`
 }
+type ApiShutdownVmResponse struct {
+	Message string `json:"message"`
+}
+type ApiForceShutdownVmRequest struct {
+	UUID structure.UUID `json:"uuid"`
+}
+type ApiForceShutdownVmResponse struct {
+	Message string `json:"message"`
+}
+type ApiStartVmRequest struct {
+	UUID structure.UUID `json:"uuid"`
+}
 
 type ApiVmStatusRequest struct {
 	UUID structure.UUID `json:"uuid"`

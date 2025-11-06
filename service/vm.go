@@ -295,6 +295,25 @@ func DeleteVM(uuid vms.UUID, contextStruct *vms.ControlContext, rdb *redis.Clien
 
 	return nil
 }
+func StartVM(uuid vms.UUID, contextStruct *vms.ControlContext) error {
+	log := util.GetLogger()
+
+	core := contextStruct.FindCoreByVmUUID(uuid)
+	if core == nil {
+		return fmt.Errorf("VM with UUID %s not found", string(uuid))
+	}
+
+	client := request.NewCoreClient(core)
+	_, err := client.StartVM(context.Background(), model.StartVMRequest{
+		UUID: uuid,
+	})
+	if err != nil {
+		return err
+	}
+
+	log.Info("VM %s started on core %s", uuid, core.IP, true)
+	return nil
+}
 
 func ShutdownVM(uuid vms.UUID, contextStruct *vms.ControlContext, rdb *redis.Client) error {
 	core := contextStruct.FindCoreByVmUUID(uuid)
