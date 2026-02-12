@@ -21,8 +21,22 @@ jobs:
 
     - name: Deploy container locally
       run: |
-        IMAGE=${{ secrets.DOCKER_HUB_USERNAME }}/control_deploy:latest
+        IMAGE=${{ secrets.DOCKER_HUB_USERNAME }}/control_dev:latest
         docker stop CONTROL_DEPLOY || true
         docker rm CONTROL_DEPLOY || true
-        docker run -d --name CONTROL_DEPLOY -p 8081:8081 $IMAGE
+        docker run -d --name CONTROL_DEPLOY -p 8081:8081 --restart=always \
+          --add-host host.docker.internal:host-gateway \
+          -e CORES="${{ secrets.CORES }}" \
+          -e DB_USER="${{ secrets.DB_USER }}" \
+          -e DB_PASSWORD="${{ secrets.DB_PASSWORD }}" \
+          -e DB_HOST="${{ secrets.DB_HOST }}" \
+          -e DB_NAME="${{ secrets.DB_NAME }}" \
+          -e GUAC_DB_USER="${{ secrets.GUAC_DB_USER }}" \
+          -e GUAC_DB_PASSWORD="${{ secrets.GUAC_DB_PASSWORD }}" \
+          -e GUAC_DB_HOST="${{ secrets.GUAC_DB_HOST }}" \
+          -e GUAC_DB_NAME="${{ secrets.GUAC_DB_NAME }}" \
+          -e REDIS_HOST="${{ secrets.REDIS_HOST }}" \
+          -e CMS_HOST="${{ secrets.CMS_HOST }}" \
+          -e GUAC_BASE_URL="${{ secrets.GUAC_BASE_URL }}" \
+          $IMAGE
         docker system prune -af
