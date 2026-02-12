@@ -24,7 +24,7 @@ jobs:
         IMAGE=${{ secrets.DOCKER_HUB_USERNAME }}/control_dev:latest
         docker stop CONTROL_DEPLOY || true
         docker rm CONTROL_DEPLOY || true
-        docker run -d --name CONTROL_DEPLOY -p 8081:8081 --restart=always \
+        docker run -d --name CONTROL_DEPLOY -p 8083:8081 --restart=always \
           --add-host host.docker.internal:host-gateway \
           -e CORES="${{ secrets.CORES }}" \
           -e DB_USER="${{ secrets.DB_USER }}" \
