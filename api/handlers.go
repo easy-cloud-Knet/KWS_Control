@@ -29,6 +29,8 @@ func Server(portNum int, contextStruct *vms.ControlContext, rdb *redis.Client) e
 	http.HandleFunc("GET /vm/info", h.vmInfo)
 	http.HandleFunc("POST /vm/start", h.startVm)
 	http.HandleFunc("GET /manage/orphaned", h.manageOrphaned)
+	http.HandleFunc("DELETE /manage/orphaned", h.deleteAllOrphaned)
+	http.HandleFunc("DELETE /manage/orphaned/{uuid}", h.deleteOneOrphaned)
 
 	fmt.Printf("Running server on port %d\n", portNum)
 	err := http.ListenAndServe(":"+strconv.Itoa(portNum), nil)

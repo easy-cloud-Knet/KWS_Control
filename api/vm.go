@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"time"
 
@@ -243,6 +244,58 @@ func (c *handlerContext) manageOrphaned(w http.ResponseWriter, r *http.Request) 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(result); err != nil {
 		log.Error("failed to encode orphaned vm response: %v", err, true)
+		http.Error(w, "failed to encode response", http.StatusInternalServerError)
+		return
+	}
+}
+
+func (c *handlerContext) deleteAllOrphaned(w http.ResponseWriter, r *http.Request) {
+	log := util.GetLogger()
+
+	result, err := service.DeleteAllOrphanedVMData(r.Context(), c.context, c.rdb)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Error("failed to delete orphaned vm list: %v", err, true)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(result); err != nil {
+		log.Error("failed to encode orphaned delete response: %v", err, true)
+		http.Error(w, "failed to encode response", http.StatusInternalServerError)
+		return
+	}
+}
+
+func (c *handlerContext) deleteOneOrphaned(w http.ResponseWriter, r *http.Request) {
+	log := util.GetLogger()
+
+	uuidRaw := r.PathValue("uuid")
+	if uuidRaw == "" {
+		http.Error(w, "missing uuid path value", http.StatusBadRequest)
+		return
+	}
+	uuid := structure.UUID(uuidRaw)
+
+	result, err := service.DeleteOrphanedVMDataByUUID(r.Context(), c.context, c.rdb, uuid)
+	if err != nil {
+		switch {
+		case errors.Is(err, service.ErrVMNotFoundInMetadata):
+			http.Error(w, err.Error(), http.StatusNotFound)
+		case errors.Is(err, service.ErrVMNotOrphaned):
+			http.Error(w, err.Error(), http.StatusConflict)
+		case errors.Is(err, service.ErrVMVerificationFailed):
+			http.Error(w, err.Error(), http.StatusBadGateway)
+		default:
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+		log.Error("failed to delete orphaned vm %s: %v", uuid, err, true)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(result); err != nil {
+		log.Error("failed to encode orphaned single delete response: %v", err, true)
 		http.Error(w, "failed to encode response", http.StatusInternalServerError)
 		return
 	}
