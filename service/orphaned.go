@@ -72,6 +72,13 @@ type OrphanedDeleteBatchResult struct {
 	TotalFailed  int                     `json:"total_failed"`
 }
 
+type orphanedMetadataSnapshot struct {
+	vmInfo      *structure.VMInfo
+	coreIdx     int
+	redisValue  string
+	redisExists bool
+}
+
 func GetOrphanedVMs(ctx context.Context, contextStruct *structure.ControlContext, rdb *redis.Client) (OrphanedVMScanResult, error) {
 	vmInfoList, coreIdxList, err := contextStruct.GetAllInstanceInfo()
 	if err != nil {
@@ -234,16 +241,29 @@ func DeleteOrphanedVMDataByUUID(ctx context.Context, contextStruct *structure.Co
 }
 
 func purgeOrphanedMetadata(ctx context.Context, contextStruct *structure.ControlContext, rdb *redis.Client, uuid structure.UUID) error {
+	snapshot, err := snapshotOrphanedMetadata(ctx, contextStruct, rdb, uuid)
+	if err != nil {
+		return fmt.Errorf("failed to snapshot metadata for %s: %w", uuid, err)
+	}
+
 	if err := contextStruct.DeleteInstance(uuid); err != nil {
 		return fmt.Errorf("failed to delete db metadata for %s: %w", uuid, err)
 	}
 	if rdb != nil {
 		if err := RemoveVMInfoFromRedis(ctx, rdb, uuid); err != nil {
-			return fmt.Errorf("failed to delete redis metadata for %s: %w", uuid, err)
+			compensationErr := restoreOrphanedMetadata(ctx, contextStruct, rdb, snapshot)
+			if compensationErr != nil {
+				return fmt.Errorf("failed to delete redis metadata for %s: %w (compensation failed: %v)", uuid, err, compensationErr)
+			}
+			return fmt.Errorf("failed to delete redis metadata for %s: %w (compensation applied)", uuid, err)
 		}
 	}
 	if err := CleanupGuacamoleConfig(string(uuid), contextStruct.GuacDB); err != nil {
-		return fmt.Errorf("failed to delete guacamole metadata for %s: %w", uuid, err)
+		compensationErr := restoreOrphanedMetadata(ctx, contextStruct, rdb, snapshot)
+		if compensationErr != nil {
+			return fmt.Errorf("failed to delete guacamole metadata for %s: %w (compensation failed: %v)", uuid, err, compensationErr)
+		}
+		return fmt.Errorf("failed to delete guacamole metadata for %s: %w (compensation applied)", uuid, err)
 	}
 
 	delete(contextStruct.VMLocation, uuid)
@@ -253,6 +273,51 @@ func purgeOrphanedMetadata(ctx context.Context, contextStruct *structure.Control
 	for i := len(contextStruct.AliveVM) - 1; i >= 0; i-- {
 		if contextStruct.AliveVM[i].UUID == uuid {
 			contextStruct.AliveVM = slices.Delete(contextStruct.AliveVM, i, i+1)
+		}
+	}
+
+	return nil
+}
+
+func snapshotOrphanedMetadata(ctx context.Context, contextStruct *structure.ControlContext, rdb *redis.Client, uuid structure.UUID) (orphanedMetadataSnapshot, error) {
+	vmInfo, err := contextStruct.GetInstance(uuid)
+	if err != nil {
+		return orphanedMetadataSnapshot{}, err
+	}
+
+	coreIdx, err := contextStruct.GetInstanceLocation(uuid)
+	if err != nil {
+		return orphanedMetadataSnapshot{}, err
+	}
+
+	snapshot := orphanedMetadataSnapshot{
+		vmInfo:  vmInfo,
+		coreIdx: coreIdx,
+	}
+
+	if rdb != nil {
+		redisValue, redisErr := rdb.Get(ctx, string(uuid)).Result()
+		if redisErr == nil {
+			snapshot.redisValue = redisValue
+			snapshot.redisExists = true
+		}
+	}
+
+	return snapshot, nil
+}
+
+func restoreOrphanedMetadata(ctx context.Context, contextStruct *structure.ControlContext, rdb *redis.Client, snapshot orphanedMetadataSnapshot) error {
+	if snapshot.vmInfo == nil {
+		return errors.New("snapshot vm info is nil")
+	}
+
+	if err := contextStruct.AddInstance(snapshot.vmInfo, snapshot.coreIdx); err != nil {
+		return fmt.Errorf("failed to restore db metadata for %s: %w", snapshot.vmInfo.UUID, err)
+	}
+
+	if rdb != nil && snapshot.redisExists {
+		if err := rdb.Set(ctx, string(snapshot.vmInfo.UUID), snapshot.redisValue, 0).Err(); err != nil {
+			return fmt.Errorf("failed to restore redis metadata for %s: %w", snapshot.vmInfo.UUID, err)
 		}
 	}
 
