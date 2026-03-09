@@ -229,3 +229,21 @@ func (c *handlerContext) vmInfo(w http.ResponseWriter, r *http.Request) {
 
 	log.Info("retrieved vm info from redis: UUID=%s", string(req.UUID), true)
 }
+
+func (c *handlerContext) manageOrphaned(w http.ResponseWriter, r *http.Request) {
+	log := util.GetLogger()
+
+	result, err := service.GetOrphanedVMs(r.Context(), c.context, c.rdb)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Error("failed to get orphaned vm list: %v", err, true)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(result); err != nil {
+		log.Error("failed to encode orphaned vm response: %v", err, true)
+		http.Error(w, "failed to encode response", http.StatusInternalServerError)
+		return
+	}
+}
