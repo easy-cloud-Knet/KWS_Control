@@ -31,7 +31,7 @@ jobs:
       - name: Run simulated API integration tests
         run: |
           set -euo pipefail
-          go test -json -count=1 ./api -run 'TestVM.*' | tee /tmp/test-report.jsonl
+          go test -json -count=1 ./api ./structure -run 'TestVM.*|TestControlContext_.*' | tee /tmp/test-report.jsonl
 
       - name: Fail if any tests were skipped
         run: |
