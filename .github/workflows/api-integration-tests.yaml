@@ -1,0 +1,66 @@
+name: API Integration Tests (Simulation)
+
+on:
+  push:
+    branches:
+      - "**"
+  pull_request:
+    branches:
+      - "**"
+
+jobs:
+  api-integration-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      KWS_INTEGRATION_REQUIRED: "true"
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Run simulated API integration tests
+        run: |
+          set -euo pipefail
+          go test -json -count=1 ./api -run 'TestVM.*' | tee /tmp/test-report.jsonl
+
+      - name: Fail if any tests were skipped
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          p = Path("/tmp/test-report.jsonl")
+          skipped = []
+          passed = []
+
+          for line in p.read_text().splitlines():
+              line = line.strip()
+              if not line:
+                  continue
+              try:
+                  e = json.loads(line)
+              except json.JSONDecodeError:
+                  continue
+              if e.get("Action") == "skip" and e.get("Test"):
+                  skipped.append(e["Test"])
+              if e.get("Action") == "pass" and e.get("Test"):
+                  passed.append(e["Test"])
+
+          if not passed:
+              raise SystemExit("No tests were executed. Failing workflow.")
+          if skipped:
+              raise SystemExit("Skipped tests detected: " + ", ".join(sorted(set(skipped))))
+
+          print(f"Executed {len(set(passed))} tests with no skips.")
+          PY
