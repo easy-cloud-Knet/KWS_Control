@@ -1,15 +1,14 @@
-package ssh
+package service
 
 import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
-
 	"golang.org/x/crypto/ssh"
 )
 
-func GenerateSSHKey() (string, string, error) {
+func GenerateSshKey() (string, string, error) {
 	privateKey, err := rsa.GenerateKey(rand.Reader, 4096)
 	if err != nil {
 		return "", "", err

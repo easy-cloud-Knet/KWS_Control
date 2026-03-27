@@ -119,7 +119,7 @@ func CreateVM(w http.ResponseWriter, r *http.Request, contextStruct *vms.Control
 
 		return errors.New("selectedCore == nil")
 	}
-	var privateKeyPEM, publicKeyOpenSSH, err = internalssh.GenerateSSHKey()
+	var privateKeyPEM, publicKeyOpenSSH, err = GenerateSshKey()
 	if err != nil {
 		log.Error("GenerateSshKey() failed: %v", err, true)
 		return err
@@ -137,7 +137,7 @@ func CreateVM(w http.ResponseWriter, r *http.Request, contextStruct *vms.Control
 	cleanup := func() {
 		if guacamoleConfigured {
 			log.Info("clean up clean up")
-			if cleanupErr := guacamole.Cleanup(string(uuid), contextStruct.GuacDB); cleanupErr != nil {
+			if cleanupErr := CleanupGuacamoleConfig(string(uuid), contextStruct.GuacDB); cleanupErr != nil {
 				log.Error("Failed to cleanup Guacamole config during rollback: %v", cleanupErr)
 			}
 		}
@@ -170,7 +170,7 @@ func CreateVM(w http.ResponseWriter, r *http.Request, contextStruct *vms.Control
 	fmt.Printf("%s\n", cmsResp.MacAddr)
 	fmt.Printf("%s\n", cmsResp.SdnUUID)
 
-	userPass := guacamole.Configure(req.Users[0].Name, string(req.UUID), cmsResp.IP, privateKeyPEM, contextStruct.GuacDB)
+	userPass := GuacamoleConfig(req.Users[0].Name, string(req.UUID), cmsResp.IP, privateKeyPEM, contextStruct.GuacDB)
 
 	if userPass == "" {
 		log.Error("Failed to configure Guacamole", true)
@@ -279,7 +279,7 @@ func DeleteVM(uuid vms.UUID, contextStruct *vms.ControlContext, rdb *redis.Clien
 		log.Error("error deleting instance %s from ControlContext: %v", uuid, err)
 		return err
 	}
-	if cleanupErr := guacamole.Cleanup(string(uuid), contextStruct.GuacDB); cleanupErr != nil {
+	if cleanupErr := CleanupGuacamoleConfig(string(uuid), contextStruct.GuacDB); cleanupErr != nil {
 		log.Error("Failed to cleanup Guacamole config during rollback: %v", cleanupErr)
 	}
 

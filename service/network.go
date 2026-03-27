@@ -6,9 +6,10 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 
-	pkgnetwork "github.com/easy-cloud-Knet/KWS_Control/pkg/network"
 	vms "github.com/easy-cloud-Knet/KWS_Control/structure"
 	"github.com/easy-cloud-Knet/KWS_Control/util"
 )
@@ -98,7 +99,7 @@ func (c *CmsClient) AddCmsSubnet(ctx *vms.ControlContext, uuid vms.UUID) (*CmsRe
 		log.Error("AddCmsSubnet : GetVMIPByUUID: %w", err)
 		return nil, err
 	}
-	subnet, err := pkgnetwork.GetSubnetFromIP(ip)
+	subnet, err := GetSubnetFromIP(ip)
 	if err != nil {
 		log.Error("AddCmsSubnet : GetSubnetFromIP: %v", err)
 		return nil, err
@@ -117,7 +118,7 @@ func (c *CmsClient) NewCmsSubnet(ctx *vms.ControlContext) (*CmsResponse, error) 
 	log := util.GetLogger()
 
 	last_subnet := ctx.Last_subnet
-	next_last_subnet := pkgnetwork.FindSubnet(last_subnet)
+	next_last_subnet := Find_subnet(last_subnet)
 	log.Info("NewCmsSubnet : next_last_subnet: %s", next_last_subnet)
 
 	temp, err := c.CmsRequest(next_last_subnet)
@@ -134,6 +135,40 @@ func (c *CmsClient) NewCmsSubnet(ctx *vms.ControlContext) (*CmsResponse, error) 
 	return temp, nil
 }
 
+func Find_subnet(last_subnet string) string {
+	value := make([]int, 3)
+	j := 0
+	for i := 0; i < 3; i++ {
+		var temp string
+		for last_subnet[j] != '.' {
+			temp = temp + string(last_subnet[j])
+			j++
+		}
+		value[i], _ = strconv.Atoi(temp)
+		j++
+	}
+
+	if value[2] >= 255 {
+		if value[1] >= 255 {
+			if value[0] >= 255 {
+				return "err"
+			} else {
+				value[0]++
+				value[1] = 0
+				value[2] = 0
+			}
+		} else {
+			value[1]++
+			value[2] = 0
+		}
+	} else {
+		value[2]++
+	}
+
+	result := fmt.Sprintf("%s.%s.%s.", strconv.Itoa(value[0]), strconv.Itoa(value[1]), strconv.Itoa(value[2]))
+	return result
+}
+
 func GetVMIPByUUID(ctx *vms.ControlContext, uuid vms.UUID) (string, error) {
 	core, ok := ctx.VMLocation[uuid]
 	if !ok {
@@ -148,3 +183,11 @@ func GetVMIPByUUID(ctx *vms.ControlContext, uuid vms.UUID) (string, error) {
 	return vmInfo.IP_VM, nil
 }
 
+func GetSubnetFromIP(ip string) (string, error) {
+	parts := strings.Split(ip, ".")
+	if len(parts) != 4 {
+		return "", fmt.Errorf("invalid IP format: %s", ip)
+	}
+
+	return strings.Join(parts[:3], ".") + ".", nil
+}
