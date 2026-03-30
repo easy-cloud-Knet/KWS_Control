@@ -1,0 +1,65 @@
+services:
+  mysql-test:
+    image: mysql:8.0
+    container_name: kws-test-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: testpass
+    volumes:
+      - ./init-test-db.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-ptestpass"]
+      interval: 3s
+      timeout: 5s
+      retries: 20
+
+  redis-test:
+    image: redis:7-alpine
+    container_name: kws-test-redis
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 10
+
+  mock-core:
+    image: python:3.12-alpine
+    container_name: kws-test-mock-core
+    working_dir: /app
+    volumes:
+      - ./mock_core.py:/app/mock_core.py
+    command: ["python", "mock_core.py"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/')"]
+      interval: 2s
+      timeout: 3s
+      retries: 10
+
+  control-test:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: kws-test-control
+    ports:
+      - "18081:8081"
+    environment:
+      DB_USER: root
+      DB_PASSWORD: testpass
+      DB_HOST: mysql-test
+      DB_PORT: "3306"
+      DB_NAME: core_base
+      GUAC_DB_USER: root
+      GUAC_DB_PASSWORD: testpass
+      GUAC_DB_HOST: mysql-test
+      GUAC_DB_PORT: "3306"
+      GUAC_DB_NAME: guacamole_db
+      REDIS_HOST: redis-test:6379
+      CORES: mock-core:8080
+      GUACAMOLE_BASE_URL: http://mock-core:8080/guacamole
+      CMS_HOST: mock-core:8080
+    depends_on:
+      mysql-test:
+        condition: service_healthy
+      redis-test:
+        condition: service_healthy
+      mock-core:
+        condition: service_healthy
