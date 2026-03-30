@@ -306,7 +306,6 @@ redis_exec SET "test-uuid-002" \
 
 # 6b. POST /vm/redis -- Update VM status
 echo -e "\n  ${CYAN}-- POST /vm/redis tests --${NC}"
-m
 http POST "/vm/redis" '{"UUID":"test-uuid-001","status":"started begin"}'
 assert_status "Update status to 'started begin' should be 200" "200" "$HTTP_CODE"
 assert_body_contains "Response body contains 'VM status updated'" "VM status updated" "$HTTP_BODY"
