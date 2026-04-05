@@ -1,0 +1,40 @@
+name: PR Build Verification
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches:
+      - main
+      - Dev
+
+jobs:
+  build-check:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.23.x'
+
+    - name: Download Go modules
+      run: go mod download
+
+    - name: Build
+      run: go build -o main .
+
+    - name: Comment on failure
+      if: failure()
+      uses: actions/github-script@v7
+      with:
+        script: |
+          await github.rest.pulls.createReview({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            pull_number: context.payload.pull_request.number,
+            event: 'REQUEST_CHANGES',
+            body: 'Failed To BUILD! Please check the build logs for details and Resolve the issues before merging.'
+          });
