@@ -35,6 +35,7 @@ jobs:
             owner: context.repo.owner,
             repo: context.repo.repo,
             pull_number: context.payload.pull_request.number,
-            event: 'REQUEST_CHANGES',
+            event: 'COMMENT',
             body: 'Failed To BUILD! Please check the build logs for details and Resolve the issues before merging.'
+          });
           });
