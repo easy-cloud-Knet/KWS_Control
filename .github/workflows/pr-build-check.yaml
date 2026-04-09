@@ -38,4 +38,3 @@ jobs:
             event: 'COMMENT',
             body: 'Failed To BUILD! Please check the build logs for details and Resolve the issues before merging.'
           });
-          });
