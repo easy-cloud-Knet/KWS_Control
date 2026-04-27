@@ -9,7 +9,7 @@ import (
 	"github.com/easy-cloud-Knet/KWS_Control/util"
 )
 
-func AddCmsSubnet(c *client.SubnetClient, ctx *vms.ControlContext, uuid vms.UUID) (*client.NewSubnetRequest, error) {
+func AddCmsSubnet(c *client.CmsClient, ctx *vms.ControlContext, uuid vms.UUID) (*client.NewSubnetRequest, error) {
 	log := util.GetLogger()
 
 	ip, err := GetVMIPByUUID(ctx, uuid)
@@ -31,7 +31,7 @@ func AddCmsSubnet(c *client.SubnetClient, ctx *vms.ControlContext, uuid vms.UUID
 	return resp, nil
 }
 
-func NewCmsSubnet(c *client.SubnetClient, ctx *vms.ControlContext) (*client.NewSubnetRequest, error) {
+func NewCmsSubnet(c *client.CmsClient, ctx *vms.ControlContext) (*client.NewSubnetRequest, error) {
 	log := util.GetLogger()
 
 	last_subnet := ctx.Last_subnet

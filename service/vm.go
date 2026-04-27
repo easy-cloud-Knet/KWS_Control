@@ -134,12 +134,12 @@ func CreateVM(req model.CreateVMRequest, contextStruct *vms.ControlContext, rdb 
 	}
 
 	var subnetReq *client.NewSubnetRequest
-	subnetClient := client.NewSubnetClient()
+	cmsClient := client.NewCmsClient()
 
 	if req.Subnettype == "Add" {
-		subnetReq, err = AddCmsSubnet(subnetClient, contextStruct, uuid)
+		subnetReq, err = AddCmsSubnet(cmsClient, contextStruct, uuid)
 	} else {
-		subnetReq, err = NewCmsSubnet(subnetClient, contextStruct)
+		subnetReq, err = NewCmsSubnet(cmsClient, contextStruct)
 		newSubnetAllocated = true
 	}
 	if err != nil {

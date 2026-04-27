@@ -11,7 +11,7 @@ import (
 	"github.com/easy-cloud-Knet/KWS_Control/util"
 )
 
-type SubnetClient struct {
+type CmsClient struct {
 	baseURL string
 	client  *http.Client
 }
@@ -26,7 +26,7 @@ type subnetRequest struct {
 	Subnet string `json:"Subnet"`
 }
 
-func NewSubnetClient() *SubnetClient {
+func NewCmsClient() *CmsClient {
 	CMS_HOST := os.Getenv("CMS_HOST")
 	if CMS_HOST == "" {
 		log := util.GetLogger()
@@ -34,7 +34,7 @@ func NewSubnetClient() *SubnetClient {
 		CMS_HOST = "localhost:8080"
 		log.Warn("CMS_HOST set: %s", CMS_HOST, true)
 	}
-	return &SubnetClient{
+	return &CmsClient{
 		baseURL: CMS_HOST,
 		client: &http.Client{
 			Timeout: 10 * time.Second,
@@ -42,7 +42,7 @@ func NewSubnetClient() *SubnetClient {
 	}
 }
 
-func (c *SubnetClient) RequestSubnet(subnet string) (*NewSubnetRequest, error) {
+func (c *CmsClient) RequestSubnet(subnet string) (*NewSubnetRequest, error) {
 	log := util.GetLogger()
 
 	reqURL := fmt.Sprintf("http://%s/New/Instance", c.baseURL)
