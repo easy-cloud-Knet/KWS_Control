@@ -11,22 +11,22 @@ import (
 	"github.com/easy-cloud-Knet/KWS_Control/util"
 )
 
-type CmsClient struct {
+type SubnetClient struct {
 	baseURL string
 	client  *http.Client
 }
 
-type CmsResponse struct {
+type NewSubnetRequest struct {
 	IP      string `json:"ip"`
 	MacAddr string `json:"macAddr"`
 	SdnUUID string `json:"sdnUUID"`
 }
 
-type CmsRequest struct {
+type subnetRequest struct {
 	Subnet string `json:"Subnet"`
 }
 
-func NewCmsClient() *CmsClient {
+func NewSubnetClient() *SubnetClient {
 	CMS_HOST := os.Getenv("CMS_HOST")
 	if CMS_HOST == "" {
 		log := util.GetLogger()
@@ -34,7 +34,7 @@ func NewCmsClient() *CmsClient {
 		CMS_HOST = "localhost:8080"
 		log.Warn("CMS_HOST set: %s", CMS_HOST, true)
 	}
-	return &CmsClient{
+	return &SubnetClient{
 		baseURL: CMS_HOST,
 		client: &http.Client{
 			Timeout: 10 * time.Second,
@@ -42,11 +42,11 @@ func NewCmsClient() *CmsClient {
 	}
 }
 
-func (c *CmsClient) RequestSubnet(subnet string) (*CmsResponse, error) {
+func (c *SubnetClient) RequestSubnet(subnet string) (*NewSubnetRequest, error) {
 	log := util.GetLogger()
 
 	reqURL := fmt.Sprintf("http://%s/New/Instance", c.baseURL)
-	reqBody := CmsRequest{Subnet: subnet}
+	reqBody := subnetRequest{Subnet: subnet}
 	jsonBody, err := json.Marshal(reqBody)
 	if err != nil {
 		log.Error("CMS : failed to marshal JSON: %v", err)
@@ -77,7 +77,7 @@ func (c *CmsClient) RequestSubnet(subnet string) (*CmsResponse, error) {
 		return nil, fmt.Errorf("CMS server returned non-OK status: %s", resp.Status)
 	}
 
-	var addrResp CmsResponse
+	var addrResp NewSubnetRequest
 	if err := json.NewDecoder(resp.Body).Decode(&addrResp); err != nil {
 		log.Error("CMS : failed to decode CMS response: %v", err)
 		return nil, fmt.Errorf("RequestSubnet: failed to decode response: %w", err)

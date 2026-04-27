@@ -133,13 +133,13 @@ func CreateVM(req model.CreateVMRequest, contextStruct *vms.ControlContext, rdb 
 		}
 	}
 
-	var cmsResp *client.CmsResponse
-	cmsClient := client.NewCmsClient()
+	var subnetReq *client.NewSubnetRequest
+	subnetClient := client.NewSubnetClient()
 
 	if req.Subnettype == "Add" {
-		cmsResp, err = AddCmsSubnet(cmsClient, contextStruct, uuid)
+		subnetReq, err = AddCmsSubnet(subnetClient, contextStruct, uuid)
 	} else {
-		cmsResp, err = NewCmsSubnet(cmsClient, contextStruct)
+		subnetReq, err = NewCmsSubnet(subnetClient, contextStruct)
 		newSubnetAllocated = true
 	}
 	if err != nil {
@@ -147,11 +147,11 @@ func CreateVM(req model.CreateVMRequest, contextStruct *vms.ControlContext, rdb 
 		return fmt.Errorf("CreateVM: failed to configure cms: %w", err)
 	}
 
-	fmt.Printf("%s\n", cmsResp.IP)
-	fmt.Printf("%s\n", cmsResp.MacAddr)
-	fmt.Printf("%s\n", cmsResp.SdnUUID)
+	fmt.Printf("%s\n", subnetReq.IP)
+	fmt.Printf("%s\n", subnetReq.MacAddr)
+	fmt.Printf("%s\n", subnetReq.SdnUUID)
 
-	userPass := guacamole.Configure(req.Users[0].Name, string(req.UUID), cmsResp.IP, privateKeyPEM, contextStruct.GuacDB)
+	userPass := guacamole.Configure(req.Users[0].Name, string(req.UUID), subnetReq.IP, privateKeyPEM, contextStruct.GuacDB)
 
 	if userPass == "" {
 		log.Error("CreateVM: failed to configure Guacamole", true)
@@ -162,11 +162,11 @@ func CreateVM(req model.CreateVMRequest, contextStruct *vms.ControlContext, rdb 
 	newVM := &vms.VMInfo{
 		UUID:         uuid,
 		GuacPassword: userPass,
-		MacAddr:      cmsResp.MacAddr,
+		MacAddr:      subnetReq.MacAddr,
 		Memory:       req.HardwareInfo.Memory,
 		Cpu:          req.HardwareInfo.CPU,
 		Disk:         req.HardwareInfo.Disk,
-		IP_VM:        cmsResp.IP,
+		IP_VM:        subnetReq.IP,
 	}
 
 	// VMInfoIdx map 쓰기 + Free* 필드 감소는 원자적으로 처리해야 함
@@ -185,9 +185,9 @@ func CreateVM(req model.CreateVMRequest, contextStruct *vms.ControlContext, rdb 
 
 	log.DebugInfo("core %s updated: FreeMemory=%d, FreeCPU=%d, FreeDisk=%d", selectedCore.IP, selectedCore.FreeMemory, selectedCore.FreeCPU, selectedCore.FreeDisk)
 
-	req.NetConf.Ips = []string{cmsResp.IP}
-	req.SdnUUID = cmsResp.SdnUUID
-	req.MacAddr = cmsResp.MacAddr
+	req.NetConf.Ips = []string{subnetReq.IP}
+	req.SdnUUID = subnetReq.SdnUUID
+	req.MacAddr = subnetReq.MacAddr
 	req.NetConf.NetType = 0
 	req.Users[0].SSHAuthorizedKeys = []string{publicKeyOpenSSH}
 
@@ -196,7 +196,7 @@ func CreateVM(req model.CreateVMRequest, contextStruct *vms.ControlContext, rdb 
 		CPU:    req.HardwareInfo.CPU,
 		Memory: req.HardwareInfo.Memory,
 		Disk:   req.HardwareInfo.Disk,
-		IP:     cmsResp.IP,
+		IP:     subnetReq.IP,
 		Status: model.VMStatusUnknown, // prepare begin 으로 초기화 함
 		Time:   time.Now().Unix(),
 	}
@@ -223,7 +223,7 @@ func CreateVM(req model.CreateVMRequest, contextStruct *vms.ControlContext, rdb 
 	}
 
 	if newSubnetAllocated {
-		_, err := contextStruct.DB.Exec("UPDATE subnet SET last_subnet = ? WHERE id = '1'", cmsResp.IP)
+		_, err := contextStruct.DB.Exec("UPDATE subnet SET last_subnet = ? WHERE id = '1'", subnetReq.IP)
 		if err != nil {
 			log.Error("Error database Subnet insertion failed: %v", err, true)
 		}
