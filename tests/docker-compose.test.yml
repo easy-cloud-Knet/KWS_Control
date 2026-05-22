@@ -7,11 +7,10 @@ services:
     volumes:
       - ./init-test-db.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
-      test: ["CMD", "mysql", "-uroot", "-ptestpass", "-h", "127.0.0.1", "-P", "3306"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-ptestpass"]
       interval: 3s
       timeout: 5s
-      retries: 30
-      start_period: 50s
+      retries: 20
 
   redis-test:
     image: redis:7-alpine
@@ -40,7 +39,6 @@ services:
       context: ..
       dockerfile: Dockerfile
     container_name: kws-test-control
-    restart: on-failure:3
     ports:
       - "18081:8081"
     environment:

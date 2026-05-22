@@ -8,6 +8,11 @@ cores:
 
 port: 8081
 
+# 코어 선택 알고리즘 파라미터
+cpu_overcommit: 4.0    # vCPU 오버커밋 배수 (logical_cpu * cpu_overcommit = 가용 vCPU)
+mem_reserve_pct: 0.1   # 메모리 여유분 비율 (0..1)
+disk_reserve_pct: 0.1  # 디스크 여유분 비율 (0..1)
+
 db:
   user: "root"
   password: "password"

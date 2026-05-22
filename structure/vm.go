@@ -14,6 +14,11 @@ type Config struct {
 	Redis             string   `yaml:"redis"`
 	DB                DBConfig `yaml:"db"`
 	GuacDB            DBConfig `yaml:"guac_db"`
+
+	// 코어 선택 알고리즘 파라미터 (기본값은 startup.applyAllocDefaults에서 보정)
+	CpuOvercommit  float64 `yaml:"cpu_overcommit"`   // vCPU 오버커밋 배수, ≤0이면 1.0
+	MemReservePct  float64 `yaml:"mem_reserve_pct"`  // 0..1, 메모리 여유분 비율
+	DiskReservePct float64 `yaml:"disk_reserve_pct"` // 0..1, 디스크 여유분 비율
 }
 
 type DBConfig struct {

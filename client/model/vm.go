@@ -86,6 +86,13 @@ type CoreMachineCpuInfoResponse struct {
 	System float64 `json:"system_time"`
 	Idle   float64 `json:"idle_time"`
 	Usage  float64 `json:"usage_percent"`
+	// Desc는 호스트 /getStatusHost(host_dataType=0) 응답에만 존재(runtime.NumCPU()).
+	// VM별 /getStatusUUID 응답에는 없으므로 포인터로 두어 미존재를 nil로 감지한다.
+	Desc *VCPUStatus `json:"vcpu_status"`
+}
+
+type VCPUStatus struct {
+	Total int `json:"total"` // 코어의 논리 CPU 총 개수
 }
 
 type CoreMachineMemoryInfoResponse struct {

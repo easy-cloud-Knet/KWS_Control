@@ -9,8 +9,7 @@ import (
 	"github.com/easy-cloud-Knet/KWS_Control/util"
 )
 
-// AddCmsSubnet은 기존 VM의 IP가 속한 서브넷으로 CMS에 새 인스턴스 할당을 요청
-func AddCmsSubnet(c *client.CmsClient, ctx *vms.ControlContext, uuid vms.UUID) (*client.CmsNewInstanceResponse, error) {
+func AddCmsSubnet(c *client.CmsClient, ctx *vms.ControlContext, uuid vms.UUID) (*client.NewSubnetRequest, error) {
 	log := util.GetLogger()
 
 	ip, err := GetVMIPByUUID(ctx, uuid)
@@ -23,64 +22,51 @@ func AddCmsSubnet(c *client.CmsClient, ctx *vms.ControlContext, uuid vms.UUID) (
 		log.Error("AddCmsSubnet : GetSubnetFromIP: %v", err)
 		return nil, fmt.Errorf("AddCmsSubnet: failed to get subnet: %w", err)
 	}
-	resp, err := c.RequestNewInstance(subnet)
+	resp, err := c.RequestSubnet(subnet)
 	if err != nil {
-		log.Error("AddCmsSubnet : RequestNewInstance: %v", err)
-		return nil, fmt.Errorf("AddCmsSubnet: CMS request failed: %w", err)
+		log.Error("AddCmsSubnet : RequestSubnet: %v", err)
+		return nil, fmt.Errorf("AddCmsSubnet: RequestSubnet failed: %w", err)
 	}
+
 	return resp, nil
 }
 
-// NewCmsSubnet은 다음 서브넷을 계산하여 DB에 선점한 뒤 CMS에 인스턴스 할당을 요청
-func NewCmsSubnet(c *client.CmsClient, ctx *vms.ControlContext) (*client.CmsNewInstanceResponse, error) {
+func NewCmsSubnet(c *client.CmsClient, ctx *vms.ControlContext) (*client.NewSubnetRequest, error) {
 	log := util.GetLogger()
 
-	lastSubnet := ctx.Last_subnet
-	nextLastSubnet := pkgnetwork.FindSubnet(lastSubnet)
-	log.Info("NewCmsSubnet : next_last_subnet: %s", nextLastSubnet)
+	last_subnet := ctx.Last_subnet
+	next_last_subnet := pkgnetwork.FindSubnet(last_subnet)
+	log.Info("NewCmsSubnet : next_last_subnet: %s", next_last_subnet)
 
-	//CMS 호출 전에 다음 서브넷을 선점하여 동시 호출 시 중복 할당 방지
-	_, err := ctx.DB.Exec("UPDATE subnet SET last_subnet = ? WHERE id = 1", nextLastSubnet)
+	// DB를 먼저 업데이트하여 서브넷을 선점한다.
+	// CMS 호출 전에 선점해야 실패 시 동일 서브넷이 중복 할당되는 것을 방지할 수 있다.
+	_, err := ctx.DB.Exec("UPDATE subnet SET last_subnet = ? WHERE id = 1", next_last_subnet)
 	if err != nil {
 		log.Error("Failed to update last_subnet in database: %v", err)
 		return nil, fmt.Errorf("NewCmsSubnet: failed to update last_subnet in DB: %w", err)
 	}
-	ctx.Last_subnet = nextLastSubnet
+	ctx.Last_subnet = next_last_subnet
 
-	resp, err := c.RequestNewInstance(nextLastSubnet)
+	resp, err := c.RequestSubnet(next_last_subnet)
 	if err != nil {
-		log.Error("NewCmsSubnet : RequestNewInstance: %v", err)
+		log.Error("NewCmsSubnet : RequestSubnet: %v", err)
 		// CMS 호출 실패 시 DB를 원래 값으로 롤백
-		if _, rbErr := ctx.DB.Exec("UPDATE subnet SET last_subnet = ? WHERE id = 1", lastSubnet); rbErr != nil {
+		if _, rbErr := ctx.DB.Exec("UPDATE subnet SET last_subnet = ? WHERE id = 1", last_subnet); rbErr != nil {
 			log.Error("NewCmsSubnet : failed to rollback last_subnet: %v", rbErr)
-			return nil, fmt.Errorf("NewCmsSubnet: CMS request failed: %w, rollback also failed: %v", err, rbErr)
+			return nil, fmt.Errorf("NewCmsSubnet: RequestSubnet failed: %w, rollback also failed: %v", err, rbErr)
 		}
-		ctx.Last_subnet = lastSubnet
-		return nil, fmt.Errorf("NewCmsSubnet: CMS request failed: %w", err)
+		ctx.Last_subnet = last_subnet
+		return nil, fmt.Errorf("NewCmsSubnet: RequestSubnet failed: %w", err)
 	}
-	return resp, nil
-}
-func DeleteCmsSubnet(c *client.CmsClient, ctx *vms.ControlContext, uuid vms.UUID) error {
-	log := util.GetLogger()
 
-	ip, err := GetVMIPByUUID(ctx, uuid)
-	if err != nil {
-		log.Error("DeleteCmsSubnet : GetVMIPByUUID: %v", err)
-		return fmt.Errorf("DeleteCmsSubnet: failed to get VM IP: %w", err)
-	}
-	_, err = c.RequestDeleteInstance(ip)
-	if err != nil {
-		log.Error("DeleteCmsSubnet : RequestDeleteInstance: %v", err)
-		return fmt.Errorf("DeleteCmsSubnet: CMS request failed: %w", err)
-	}
-	return nil
+	return resp, nil
 }
 
 func GetVMIPByUUID(ctx *vms.ControlContext, uuid vms.UUID) (string, error) {
-	ctx.Resources.RLock()
-	defer ctx.Resources.RUnlock()
+	ctx.RLock()
+	defer ctx.RUnlock()
 
-	core, ok := ctx.Resources.VMLocation[uuid]
+	core, ok := ctx.VMLocation[uuid]
 	if !ok {
 		return "", fmt.Errorf("UUID %s not found in VMLocation", uuid)
 	}

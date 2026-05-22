@@ -14,26 +14,6 @@ type ApiVmStatusRequest struct {
 	Type string         `json:"type"` // "cpu", "memory", or "disk"
 }
 
-type ApiVmCpuStatusResponse struct {
-	System float64 `json:"system_time"`
-	Idle   float64 `json:"idle_time"`
-	Usage  float64 `json:"usage_percent"`
-}
-
-type ApiVmMemoryStatusResponse struct {
-	Total       uint64  `json:"total_gb"`
-	Used        uint64  `json:"used_gb"`
-	Available   uint64  `json:"available_gb"`
-	UsedPercent float64 `json:"used_percent"`
-}
-
-type ApiVmDiskStatusResponse struct {
-	Total       uint64  `json:"total_gb"`
-	Used        uint64  `json:"used_gb"`
-	Free        uint64  `json:"free_gb"`
-	UsedPercent float64 `json:"used_percent"`
-}
-
 func (c *handlerContext) vmStatus(w http.ResponseWriter, r *http.Request) {
 	log := util.GetLogger()
 	defer r.Body.Close()
@@ -56,14 +36,11 @@ func (c *handlerContext) vmStatus(w http.ResponseWriter, r *http.Request) {
 
 	switch statusType {
 	case "cpu":
-		cpu, e := service.GetVMCpuInfo(req.UUID, c.context)
-		data, err = ApiVmCpuStatusResponse{System: cpu.System, Idle: cpu.Idle, Usage: cpu.Usage}, e
+		data, err = service.GetVMCpuInfo(req.UUID, c.context)
 	case "memory":
-		mem, e := service.GetVMMemoryInfo(req.UUID, c.context)
-		data, err = ApiVmMemoryStatusResponse{Total: mem.Total, Used: mem.Used, Available: mem.Available, UsedPercent: mem.UsedPercent}, e
+		data, err = service.GetVMMemoryInfo(req.UUID, c.context)
 	case "disk":
-		disk, e := service.GetVMDiskInfo(req.UUID, c.context)
-		data, err = ApiVmDiskStatusResponse{Total: disk.Total, Used: disk.Used, Free: disk.Free, UsedPercent: disk.UsedPercent}, e
+		data, err = service.GetVMDiskInfo(req.UUID, c.context)
 	}
 
 	if err != nil {

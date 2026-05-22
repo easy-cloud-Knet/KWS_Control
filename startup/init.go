@@ -146,8 +146,6 @@ func InitializeCoreData(configPath string) (structure.ControlContext, error) {
 	infra.Config = config
 	infra.GuacDB = db
 	infra.DB = mainDB
-	infra.VMRepo = structure.NewMySQLVMRepository(mainDB)
-	infra.Resources = structure.NewResourceManager()
 
 	var last_subnet_db string
 	err = infra.DB.QueryRow("SELECT last_subnet from core_base.subnet where id = '1'").Scan(&last_subnet_db)
@@ -156,11 +154,12 @@ func InitializeCoreData(configPath string) (structure.ControlContext, error) {
 	}
 	infra.Last_subnet = last_subnet_db
 	// 모든 Core 정의
-	for i := range infra.Resources.Cores {
-		for vmUUID := range infra.Resources.Cores[i].VMInfoIdx {
-			infra.Resources.VMLocation[vmUUID] = &infra.Resources.Cores[i]
+	infra.VMLocation = make(map[structure.UUID]*structure.Core)
+	for i := range infra.Cores {
+		for vmUUID := range infra.Cores[i].VMInfoIdx {
+			infra.VMLocation[vmUUID] = &infra.Cores[i]
 		}
-		infra.Resources.Cores[i].IsAlive = false
+		infra.Cores[i].IsAlive = false
 	}
 
 	// config에 설정된 코어에 대해서 정보 업데이트
@@ -186,15 +185,15 @@ func InitializeCoreData(configPath string) (structure.ControlContext, error) {
 			return structure.ControlContext{}, fmt.Errorf("error converting port number from %s: %w", coreAddress, err)
 		}
 
-		core := findCore(infra.Resources.Cores, ip, uint16(port))
+		core := findCore(infra.Cores, ip, uint16(port))
 		if core == nil {
 			newCore := structure.Core{
 				IP:      ip,
 				Port:    uint16(port),
 				IsAlive: true,
 			}
-			infra.Resources.Cores = append(infra.Resources.Cores, newCore)
-			core = &infra.Resources.Cores[len(infra.Resources.Cores)-1]
+			infra.Cores = append(infra.Cores, newCore)
+			core = &infra.Cores[len(infra.Cores)-1]
 			log.DebugInfo("Added new core: %s:%d", ip, port)
 		} else {
 			core.IsAlive = true
@@ -220,12 +219,23 @@ func InitializeCoreData(configPath string) (structure.ControlContext, error) {
 			freeMemoryMiB := uint32(memResp.Available * 1024)
 			freeDiskMiB := uint32(diskResp.Free * 1024)
 
+			// CPU 총량은 코어별로 한 번만 실측해 캐시한다(재확인 X).
+			// 이미 캐시된 값(>0)이 있으면 그대로 쓰고, 없을 때만 /getStatusHost로 받아온다.
 			var totalCpuCores uint32
 			if currentCore.CoreInfoIdx.Cpu > 0 {
 				totalCpuCores = currentCore.CoreInfoIdx.Cpu
 			} else {
-				log.DebugInfo("currentCore.CoreInfoIdx.Cpu: %d", currentCore.CoreInfoIdx.Cpu)
-				totalCpuCores = 9999 // 음 코어를 현재 반환받지 못하는-
+				cpuResp, err := coreClient.GetCoreMachineCpuInfo(ctx)
+				if err != nil {
+					currentCore.IsAlive = false
+					return fmt.Errorf("failed to get CPU info for core %s:%d: %w", currentCore.IP, currentCore.Port, err)
+				}
+				if cpuResp == nil || cpuResp.Desc == nil || cpuResp.Desc.Total <= 0 {
+					currentCore.IsAlive = false
+					return fmt.Errorf("core %s:%d returned no vcpu_status.total", currentCore.IP, currentCore.Port)
+				}
+				totalCpuCores = uint32(cpuResp.Desc.Total)
+				log.DebugInfo("core %s:%d measured CPU total=%d", currentCore.IP, currentCore.Port, totalCpuCores)
 			}
 
 			currentCore.CoreInfoIdx.Cpu = totalCpuCores
@@ -244,23 +254,23 @@ func InitializeCoreData(configPath string) (structure.ControlContext, error) {
 		return structure.ControlContext{}, fmt.Errorf("failed to get core info: %w", err)
 	}
 
-	vmInfoList, coreIdxList, err := infra.VMRepo.GetAllInstanceInfo()
+	vmInfoList, coreIdxList, err := infra.GetAllInstanceInfo()
 	if err != nil {
 		return structure.ControlContext{}, fmt.Errorf("failed to get all instance info: %w", err)
 	}
 
 	for i, vmInfo := range vmInfoList {
 		coreIdx := coreIdxList[i]
-		if coreIdx < 0 || coreIdx >= len(infra.Resources.Cores) {
+		if coreIdx < 0 || coreIdx >= len(infra.Cores) {
 			return structure.ControlContext{}, fmt.Errorf("core index %d out of range for core list", coreIdx)
 		}
-		core := &infra.Resources.Cores[coreIdx]
+		core := &infra.Cores[coreIdx]
 		if core.VMInfoIdx == nil {
 			core.VMInfoIdx = make(map[structure.UUID]*structure.VMInfo)
 		}
 		if _, exists := core.VMInfoIdx[vmInfo.UUID]; !exists {
 			core.VMInfoIdx[vmInfo.UUID] = &vmInfo
-			infra.Resources.VMLocation[vmInfo.UUID] = core
+			infra.VMLocation[vmInfo.UUID] = core
 		} else {
 			log.DebugInfo("VM %s already exists in core %d, skipping", vmInfo.UUID, coreIdx)
 		}

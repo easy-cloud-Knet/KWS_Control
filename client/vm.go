@@ -90,9 +90,8 @@ func (c *CoreClient) DeleteVM(context context.Context, req model.DeleteVMRequest
 	return response, nil
 }
 
-// 현재 미사용 중
-// 코어 vcpu 갯수 가져오는 함수
-// 코어에 문의 해봐야함 옛날에 구현 안됬다고 해서 컨트롤에서 9999로 하드코딩 했던거 같음
+// 코어의 논리 CPU 총 개수를 /getStatusHost(host_dataType=0)에서 가져온다.
+// 응답의 vcpu_status.total(=runtime.NumCPU())을 CoreInfoIdx.Cpu 캐시로 사용.
 func (c *CoreClient) GetCoreMachineCpuInfo(context context.Context) (*model.CoreMachineCpuInfoResponse, error) {
 	var response model.CoreResponse[model.CoreMachineCpuInfoResponse]
 	err := c.doRequest(context, http.MethodGet, "/getStatusHost", model.GetMachineStatusRequest{

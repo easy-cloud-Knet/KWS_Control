@@ -14,9 +14,9 @@ func GetGuacamoleToken(uuid structure.UUID, ctx *structure.ControlContext) (stri
 		return "", structure.ErrCoreNotFound(uuid)
 	}
 
-	ctx.Resources.RLock()
+	ctx.RLock()
 	vm, exists := core.VMInfoIdx[uuid]
-	ctx.Resources.RUnlock()
+	ctx.RUnlock()
 
 	if exists {
 		guacClient := client.NewGuacamoleClient(&ctx.Config)

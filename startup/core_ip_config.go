@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 
 	"github.com/easy-cloud-Knet/KWS_Control/structure"
 	"github.com/easy-cloud-Knet/KWS_Control/util"
@@ -55,5 +56,50 @@ func tryReadConfig(path string) (structure.Config, error) {
 		return structure.Config{}, fmt.Errorf("failed to decode config file: %w", err)
 	}
 
+	applyAllocDefaults(&config)
+
 	return config, nil
+}
+
+// applyAllocDefaults는 코어 선택 파라미터에 env 오버라이드를 적용한 뒤 안전한 기본값으로 보정한다.
+// env 패턴은 init.go의 DB 설정과 동일(env 우선, 없으면 config 값 사용).
+//   - cpu_overcommit ≤ 0  → 1.0 (오버커밋 없음)
+//   - *_reserve_pct  범위 밖([0,1)) → 0.0 (여유분 없음)
+func applyAllocDefaults(config *structure.Config) {
+	log := util.GetLogger()
+
+	if v := os.Getenv("CPU_OVERCOMMIT"); v != "" {
+		if f, err := strconv.ParseFloat(v, 64); err == nil {
+			config.CpuOvercommit = f
+		} else {
+			log.Warn("invalid CPU_OVERCOMMIT=%q, ignoring: %v", v, err)
+		}
+	}
+	if v := os.Getenv("MEM_RESERVE_PCT"); v != "" {
+		if f, err := strconv.ParseFloat(v, 64); err == nil {
+			config.MemReservePct = f
+		} else {
+			log.Warn("invalid MEM_RESERVE_PCT=%q, ignoring: %v", v, err)
+		}
+	}
+	if v := os.Getenv("DISK_RESERVE_PCT"); v != "" {
+		if f, err := strconv.ParseFloat(v, 64); err == nil {
+			config.DiskReservePct = f
+		} else {
+			log.Warn("invalid DISK_RESERVE_PCT=%q, ignoring: %v", v, err)
+		}
+	}
+
+	if config.CpuOvercommit <= 0 {
+		config.CpuOvercommit = 1.0
+	}
+	if config.MemReservePct < 0 || config.MemReservePct >= 1 {
+		config.MemReservePct = 0.0
+	}
+	if config.DiskReservePct < 0 || config.DiskReservePct >= 1 {
+		config.DiskReservePct = 0.0
+	}
+
+	log.DebugInfo("alloc params: cpu_overcommit=%.2f, mem_reserve_pct=%.2f, disk_reserve_pct=%.2f",
+		config.CpuOvercommit, config.MemReservePct, config.DiskReservePct)
 }

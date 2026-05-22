@@ -3,10 +3,12 @@ package main
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/easy-cloud-Knet/KWS_Control/structure"
 
 	"github.com/easy-cloud-Knet/KWS_Control/api"
+	"github.com/easy-cloud-Knet/KWS_Control/service"
 	"github.com/easy-cloud-Knet/KWS_Control/startup"
 	"github.com/easy-cloud-Knet/KWS_Control/util"
 )
@@ -16,7 +18,7 @@ func main() {
 
 	ctx := context.Background()
 
-	//Redis 초기화
+	//Redis 초기화 (VM status 저장 + 코어별 할당 집계 공용)
 	rdb, err := startup.InitializeRedis(ctx)
 	if err != nil {
 		log.Error("Failed to initialize Redis: %v", err, true)
@@ -30,7 +32,15 @@ func main() {
 		log.Error("Failed to initialize: %v", err, true)
 		panic(err)
 	}
-	printCores(contextStruct.Resources.Cores)
+	printCores(contextStruct.Cores)
+
+	// DB 인스턴스 합계로 코어별 할당(core:{ip}:{port}:alloc) 재구성(시작 시 1회, 멱등). 실패해도 기동은 계속.
+	if err := service.RebuildCoreAllocFromDB(ctx, &contextStruct, rdb); err != nil {
+		log.Error("Failed to rebuild core alloc from DB: %v", err, true)
+	}
+
+	// 주기적 헬스체크(코어 가용성/용량 갱신)
+	go service.StartHealthcheck(ctx, &contextStruct, 30*time.Second)
 
 	go func() {
 		err := api.Server(contextStruct.Config.Port, &contextStruct, rdb)
