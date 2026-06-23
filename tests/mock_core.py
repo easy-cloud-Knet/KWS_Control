@@ -29,6 +29,9 @@ CPU_RESP = {
         "system_time": 100.0,
         "idle_time": 5000.0,
         "usage_percent": 5.0,
+        # Control startup (init.go) requires vcpu_status.total to size core CPU capacity;
+        # without it InitializeCoreData panics and the server never starts.
+        "vcpu_status": {"total": 8},
     },
     "message": "Host Status Return operation success",
 }
