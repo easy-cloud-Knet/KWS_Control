@@ -216,12 +216,15 @@ func DeleteVM(uuid vms.UUID, contextStruct *vms.ControlContext, rdb *redis.Clien
 		return fmt.Errorf("VM with UUID %s not found", string(uuid))
 	}
 
-	// 삭제 전에 인메모리 VMInfoIdx에서 회수할 자원 크기를 확보.
+	// 삭제 전에 인메모리 VMInfoIdx에서 회수할 자원 크기와 VM IP를 확보.
+	// (IP는 CMS 해제에 필요 — 아래 인메모리 정리 전에 캡처해 둬야 한다.)
 	contextStruct.RLock()
 	var dCPU, dMem, dDisk int64
+	var vmIP string
 	sizeKnown := false
 	if vmInfo, ok := core.VMInfoIdx[uuid]; ok {
 		dCPU, dMem, dDisk = int64(vmInfo.Cpu), int64(vmInfo.Memory), int64(vmInfo.Disk)
+		vmIP = vmInfo.IP_VM
 		sizeKnown = true
 	}
 	contextStruct.RUnlock()
@@ -234,6 +237,17 @@ func DeleteVM(uuid vms.UUID, contextStruct *vms.ControlContext, rdb *redis.Clien
 	if err != nil {
 		log.Error("error deleting VM %s on core %s: %v", uuid, core.IP, err)
 		return fmt.Errorf("DeleteVM: failed to delete VM %s on core %s: %w", uuid, core.IP, err)
+	}
+
+	// CMS 측 할당(IP/MAC/SDN) 해제 — 누락 시 CMS 풀 누수. 인메모리 정리 전에 캡처한 vmIP 사용.
+	// 실패는 (guac/redis 정리와 동일 정책) 경고만 남기고 삭제 자체는 성공으로 처리한다.
+	if vmIP != "" {
+		cmsClient := client.NewCmsClient()
+		if _, cmsErr := cmsClient.RequestDeleteInstance(vmIP); cmsErr != nil {
+			log.Warn("DeleteVM: failed to release CMS allocation for %s (ip=%s): %v", uuid, vmIP, cmsErr, true)
+		}
+	} else {
+		log.Warn("DeleteVM: IP for %s unknown (not in VMInfoIdx); CMS allocation not released", uuid, true)
 	}
 
 	err = contextStruct.DeleteInstance(uuid)
