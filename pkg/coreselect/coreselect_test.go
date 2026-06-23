@@ -1,4 +1,4 @@
-package service
+package coreselect
 
 import (
 	"math"
@@ -151,6 +151,40 @@ func TestChooseBest(t *testing.T) {
 		}
 		if got := chooseBest(cands); got != 0 {
 			t.Errorf("chooseBest = %d, want 0 (lowest index via forward scan)", got)
+		}
+	})
+}
+
+func TestChoose(t *testing.T) {
+	p := Params{MemReservePct: 0, DiskReservePct: 0}
+
+	t.Run("no cores returns -1", func(t *testing.T) {
+		if got := Choose(Resources{1, 100, 100}, nil, p); got != -1 {
+			t.Errorf("Choose(nil) = %d, want -1", got)
+		}
+	})
+
+	t.Run("infeasible core filtered out", func(t *testing.T) {
+		cores := []CoreInput{
+			{Capacity: Resources{2, 1000, 1000}, Alloc: Resources{2, 0, 0}}, // cpu full
+		}
+		if got := Choose(Resources{1, 100, 100}, cores, p); got != -1 {
+			t.Errorf("Choose = %d, want -1 (only core infeasible)", got)
+		}
+	})
+
+	t.Run("returns index into input slice", func(t *testing.T) {
+		cores := []CoreInput{
+			{Capacity: Resources{2, 1000, 1000}, Alloc: Resources{2, 0, 0}},   // 0: infeasible (cpu full)
+			{Capacity: Resources{8, 8000, 8000}, Alloc: Resources{0, 0, 0}},   // 1: feasible, very empty
+			{Capacity: Resources{4, 4000, 4000}, Alloc: Resources{1, 500, 0}}, // 2: feasible
+		}
+		got := Choose(Resources{1, 500, 500}, cores, p)
+		if got != 1 && got != 2 {
+			t.Errorf("Choose = %d, want a feasible index (1 or 2)", got)
+		}
+		if got == 0 {
+			t.Errorf("Choose returned infeasible core index 0")
 		}
 	})
 }
