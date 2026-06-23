@@ -188,3 +188,22 @@ func TestChoose(t *testing.T) {
 		}
 	})
 }
+
+func TestChooseWeighting(t *testing.T) {
+	// 두 코어는 cpu↔disk 대칭: A는 disk가 빡빡(remaining 0.5)·cpu 여유, B는 cpu가 빡빡·disk 여유.
+	// 용량이 같아 requestVector도 동일 → 동등 가중이면 점수가 정확히 타이(대칭).
+	cores := []CoreInput{
+		{Capacity: Resources{10, 10, 10}, Alloc: Resources{0, 0, 5}}, // 0(A): remaining {1, 1, 0.5}
+		{Capacity: Resources{10, 10, 10}, Alloc: Resources{5, 0, 0}}, // 1(B): remaining {0.5, 1, 1}
+	}
+	req := Resources{1, 1, 1}
+
+	// disk 비중을 낮추면 "disk가 빡빡한" A를 선호 — disk 부족은 덜 중요하다는 의도 반영.
+	if got := Choose(req, cores, Params{Weights: Weights{1, 1, 0.1}}); got != 0 {
+		t.Errorf("low disk weight: Choose = %d, want 0 (A)", got)
+	}
+	// 대칭 확인: cpu 비중을 낮추면 "cpu가 빡빡한" B를 선호.
+	if got := Choose(req, cores, Params{Weights: Weights{0.1, 1, 1}}); got != 1 {
+		t.Errorf("low cpu weight: Choose = %d, want 1 (B)", got)
+	}
+}

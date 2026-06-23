@@ -89,6 +89,27 @@ func applyAllocDefaults(config *structure.Config) {
 			log.Warn("invalid DISK_RESERVE_PCT=%q, ignoring: %v", v, err)
 		}
 	}
+	if v := os.Getenv("CPU_WEIGHT"); v != "" {
+		if f, err := strconv.ParseFloat(v, 64); err == nil {
+			config.CpuWeight = f
+		} else {
+			log.Warn("invalid CPU_WEIGHT=%q, ignoring: %v", v, err)
+		}
+	}
+	if v := os.Getenv("MEM_WEIGHT"); v != "" {
+		if f, err := strconv.ParseFloat(v, 64); err == nil {
+			config.MemWeight = f
+		} else {
+			log.Warn("invalid MEM_WEIGHT=%q, ignoring: %v", v, err)
+		}
+	}
+	if v := os.Getenv("DISK_WEIGHT"); v != "" {
+		if f, err := strconv.ParseFloat(v, 64); err == nil {
+			config.DiskWeight = f
+		} else {
+			log.Warn("invalid DISK_WEIGHT=%q, ignoring: %v", v, err)
+		}
+	}
 
 	if config.CpuOvercommit <= 0 {
 		config.CpuOvercommit = 1.0
@@ -99,7 +120,18 @@ func applyAllocDefaults(config *structure.Config) {
 	if config.DiskReservePct < 0 || config.DiskReservePct >= 1 {
 		config.DiskReservePct = 0.0
 	}
+	// 가중치 기본값: cpu/mem=1.0, disk=0.5(=disk 비중 하향). ≤0이면 보정.
+	if config.CpuWeight <= 0 {
+		config.CpuWeight = 1.0
+	}
+	if config.MemWeight <= 0 {
+		config.MemWeight = 1.0
+	}
+	if config.DiskWeight <= 0 {
+		config.DiskWeight = 0.5
+	}
 
-	log.DebugInfo("alloc params: cpu_overcommit=%.2f, mem_reserve_pct=%.2f, disk_reserve_pct=%.2f",
-		config.CpuOvercommit, config.MemReservePct, config.DiskReservePct)
+	log.DebugInfo("alloc params: cpu_overcommit=%.2f, mem_reserve_pct=%.2f, disk_reserve_pct=%.2f, weights(cpu/mem/disk)=%.2f/%.2f/%.2f",
+		config.CpuOvercommit, config.MemReservePct, config.DiskReservePct,
+		config.CpuWeight, config.MemWeight, config.DiskWeight)
 }

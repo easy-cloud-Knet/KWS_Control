@@ -32,6 +32,11 @@ func SelectCore(ctx context.Context, req model.HardwareInfo,
 	params := coreselect.Params{
 		MemReservePct:  contextStruct.Config.MemReservePct,
 		DiskReservePct: contextStruct.Config.DiskReservePct,
+		Weights: coreselect.Weights{
+			CPU:  contextStruct.Config.CpuWeight,
+			Mem:  contextStruct.Config.MemWeight,
+			Disk: contextStruct.Config.DiskWeight,
+		},
 	}
 
 	reqRes := coreselect.Resources{

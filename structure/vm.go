@@ -19,6 +19,12 @@ type Config struct {
 	CpuOvercommit  float64 `yaml:"cpu_overcommit"`   // vCPU 오버커밋 배수, ≤0이면 1.0
 	MemReservePct  float64 `yaml:"mem_reserve_pct"`  // 0..1, 메모리 여유분 비율
 	DiskReservePct float64 `yaml:"disk_reserve_pct"` // 0..1, 디스크 여유분 비율
+
+	// 코사인 유사도 차원별 가중치(≤0이면 기본값으로 보정). 작을수록 해당 자원이 코어 선택에 덜 기여.
+	// disk는 (필터를 통과하는 한) cpu/mem보다 덜 중요하다는 판단으로 기본값을 낮게 둔다.
+	CpuWeight  float64 `yaml:"cpu_weight"`  // 기본 1.0
+	MemWeight  float64 `yaml:"mem_weight"`  // 기본 1.0
+	DiskWeight float64 `yaml:"disk_weight"` // 기본 0.5
 }
 
 type DBConfig struct {
