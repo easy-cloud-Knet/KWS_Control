@@ -188,6 +188,11 @@ assert_status "GET /vm/info with invalid JSON should be 400" "400" "$HTTP_CODE"
 # ============================================================
 section "Section 3: Field Validation"
 
+# POST /vm requires at least one user (empty users array -> 400, not a server panic).
+# HWInfo is non-zero here so the request reaches the users check rather than failing on HWInfo.
+http POST "/vm" '{"domType":"kvm","uuid":"no-users","HWInfo":{"cpu":2,"memory":2048,"disk":20},"users":[]}'
+assert_status "POST /vm with empty users should be 400" "400" "$HTTP_CODE"
+
 http GET "/vm/status" '{"uuid":"test-uuid"}'
 assert_status "GET /vm/status without type field should be 400" "400" "$HTTP_CODE"
 
