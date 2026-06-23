@@ -25,6 +25,13 @@ func CreateVM(req model.CreateVMRequest, contextStruct *vms.ControlContext, rdb 
 
 	log.Info("func CreateVM() memory=%d MiB, cpu=%d, disk=%d MiB", req.HardwareInfo.Memory, req.HardwareInfo.CPU, req.HardwareInfo.Disk, true)
 
+	// Guacamole 설정과 SSH 키 주입에 최소 1명의 사용자가 필요 — req.Users[0] 인덱싱 전에 방어적으로 검증.
+	// (API 핸들러에서도 400으로 막지만, 서비스 직접 호출 대비.)
+	if len(req.Users) == 0 {
+		log.Error("CreateVM: at least one user is required", true)
+		return fmt.Errorf("CreateVM: at least one user is required")
+	}
+
 	// SSH 키는 예약 전에 생성 — 실패해도 롤백할 예약이 없도록.
 	privateKeyPEM, publicKeyOpenSSH, err := internalssh.GenerateSSHKey()
 	if err != nil {
@@ -32,7 +39,7 @@ func CreateVM(req model.CreateVMRequest, contextStruct *vms.ControlContext, rdb 
 		return fmt.Errorf("CreateVM: failed to generate SSH key: %w", err)
 	}
 
-	uuid := vms.UUID(req.UUID.String().(string))
+	uuid := req.UUID
 
 	// ---- 코어 선택 + 예약 (단일 임계구역) ----
 	// Lock → SelectCore → IncrCoreAlloc(+) → Unlock 을 한 임계구역으로 묶어,
@@ -107,11 +114,9 @@ func CreateVM(req model.CreateVMRequest, contextStruct *vms.ControlContext, rdb 
 		return fmt.Errorf("CreateVM: failed to configure cms: %w", err)
 	}
 
-	fmt.Printf("%s\n", subnetReq.IP)
-	fmt.Printf("%s\n", subnetReq.MacAddr)
-	fmt.Printf("%s\n", subnetReq.SdnUUID)
+	log.DebugInfo("CMS allocated: ip=%s, mac=%s, sdn=%s", subnetReq.IP, subnetReq.MacAddr, subnetReq.SdnUUID)
 
-	userPass := guacamole.Configure(req.Users[0].Name, string(req.UUID), subnetReq.IP, privateKeyPEM, contextStruct.GuacDB)
+	userPass := guacamole.Configure(req.Users[0].Name, string(uuid), subnetReq.IP, privateKeyPEM, contextStruct.GuacDB)
 
 	if userPass == "" {
 		log.Error("CreateVM: failed to configure Guacamole", true)

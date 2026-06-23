@@ -31,6 +31,12 @@ func (c *handlerContext) createVm(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Guacamole 설정에 최소 1명의 사용자가 필요 — 빈 배열이면 서버 panic 대신 400 반환.
+	if len(req.Users) == 0 {
+		util.RespondError(w, http.StatusBadRequest, "at least one user is required")
+		return
+	}
+
 	err := service.CreateVM(req, c.context, c.rdb)
 	if err != nil {
 		log.Error("createVm: failed to create VM: %v", err, true)

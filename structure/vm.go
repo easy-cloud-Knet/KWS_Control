@@ -2,7 +2,7 @@ package structure
 
 type UUID string
 
-func (u UUID) String() any {
+func (u UUID) String() string {
 	return string(u)
 }
 

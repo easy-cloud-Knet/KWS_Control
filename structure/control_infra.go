@@ -190,6 +190,7 @@ func (contextStructure *ControlContext) GetAllInstanceInfo() ([]VMInfo, []int, e
 		log.Error("Failed to get joined instance info: %v", err)
 		return nil, nil, err
 	}
+	defer rows.Close()
 
 	var coreIdxList []int
 	var VMInfoList []VMInfo
@@ -205,6 +206,10 @@ func (contextStructure *ControlContext) GetAllInstanceInfo() ([]VMInfo, []int, e
 		log.DebugInfo("Found instance: %s on core %d", info.UUID, coreIdx)
 		VMInfoList = append(VMInfoList, info)
 		coreIdxList = append(coreIdxList, coreIdx)
+	}
+	if err := rows.Err(); err != nil {
+		log.Error("Failed during rows iteration: %v", err)
+		return nil, nil, err
 	}
 	return VMInfoList, coreIdxList, tx.Commit()
 }
