@@ -188,12 +188,8 @@ func CreateVM(req model.CreateVMRequest, contextStruct *vms.ControlContext, rdb 
 		return fmt.Errorf("CreateVM: failed to persist instance %s: %w", uuid, err)
 	}
 
-	if newSubnetAllocated {
-		_, err := contextStruct.DB.Exec("UPDATE subnet SET last_subnet = ? WHERE id = '1'", subnetReq.IP)
-		if err != nil {
-			log.Error("Error database Subnet insertion failed: %v", err, true)
-		}
-	}
+	// last_subnet 영속화는 NewCmsSubnet의 선점 단계에서 단일 처리 — 여기서 IP로 다시 덮어쓰지 않는다.
+	// (FindSubnet은 앞 3옥텟만 파싱하므로 subnet/IP 입력의 결과가 동일하고, 인메모리·DB 일관성을 확보.)
 
 	// VMLocation map과 AliveVM slice를 하나의 Lock으로 묶어 일관성 보장
 	// (VMLocation에는 있는데 AliveVM에는 없는 중간 상태가 노출되지 않도록)

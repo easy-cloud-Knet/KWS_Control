@@ -34,6 +34,12 @@ func AddCmsSubnet(c *client.CmsClient, ctx *vms.ControlContext, uuid vms.UUID) (
 func NewCmsSubnet(c *client.CmsClient, ctx *vms.ControlContext) (*client.NewSubnetRequest, error) {
 	log := util.GetLogger()
 
+	// Last_subnet 읽기-수정-쓰기(+CMS 선점)를 전용 subnetMu로 직렬화 —
+	// 두 CreateVM이 같은 Last_subnet을 읽어 동일 서브넷을 중복 할당하는 레이스를 방지한다.
+	// 전역 mu가 아닌 별도 mutex라 CMS 호출 동안에도 코어/VM 작업은 막지 않는다.
+	ctx.SubnetLock()
+	defer ctx.SubnetUnlock()
+
 	last_subnet := ctx.Last_subnet
 	next_last_subnet := pkgnetwork.FindSubnet(last_subnet)
 	log.Info("NewCmsSubnet : next_last_subnet: %s", next_last_subnet)

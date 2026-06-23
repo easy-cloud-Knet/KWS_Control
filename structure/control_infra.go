@@ -11,6 +11,7 @@ import (
 
 type ControlContext struct {
 	mu          sync.RWMutex
+	subnetMu    sync.Mutex // Last_subnet 할당 직렬화 전용(전역 mu와 분리: CMS 호출 동안 코어/VM 작업 미차단)
 	Config      Config
 	DB          *sql.DB
 	GuacDB      *sql.DB
@@ -28,12 +29,33 @@ func (c *ControlContext) Unlock()  { c.mu.Unlock() }
 func (c *ControlContext) RLock()   { c.mu.RLock() }
 func (c *ControlContext) RUnlock() { c.mu.RUnlock() }
 
+// SubnetLock/SubnetUnlock은 Last_subnet 할당(NewCmsSubnet)을 직렬화하는 전용 잠금.
+func (c *ControlContext) SubnetLock()   { c.subnetMu.Lock() }
+func (c *ControlContext) SubnetUnlock() { c.subnetMu.Unlock() }
+
 func (c *ControlContext) FindCoreByVmUUID(uuid UUID) *Core {
 	log := util.GetLogger()
 
+	// 1) 인메모리 VMLocation 우선 조회(RLock) — DB 왕복 제거 + healthcheck의 Cores 동시 변경으로부터 보호.
+	c.RLock()
+	if core, ok := c.VMLocation[uuid]; ok {
+		c.RUnlock()
+		return core
+	}
+	c.RUnlock()
+
+	// 2) 캐시 미스 시에만 DB 폴백. GetInstanceLocation은 내부에서 tx를 열므로 RLock 밖에서 호출.
 	coreIdx, err := c.GetInstanceLocation(uuid)
 	if err != nil {
 		log.Error("Core not found for VM UUID %s", uuid, true)
+		return nil
+	}
+
+	// 범위 밖 인덱스(stale DB 등)는 panic 대신 nil — Cores 읽기는 RLock으로 보호.
+	c.RLock()
+	defer c.RUnlock()
+	if coreIdx < 0 || coreIdx >= len(c.Cores) {
+		log.Error("FindCoreByVmUUID: core index %d out of range (len=%d) for VM UUID %s", coreIdx, len(c.Cores), uuid, true)
 		return nil
 	}
 	return &c.Cores[coreIdx]
