@@ -83,10 +83,18 @@ type StartVMResponse struct {
 type DeleteVMResponse struct {
 }
 
+type VcpuStatus struct {
+	Total     uint32 `json:"total"`     // 호스트 전체 vcpu 수
+	Allocated uint32 `json:"allocated"` // 현재 vm들에 할당된 vcpu 수
+	Sleeping  uint32 `json:"sleeping"`  // 할당되었지만 유휴 상태인 vcpu 수
+	Idle      uint32 `json:"idle"`      // 할당되지 않은 vcpu 수 (total - allocated)
+}
+
 type CoreMachineCpuInfoResponse struct {
-	System float64 `json:"system_time"`
-	Idle   float64 `json:"idle_time"`
-	Usage  float64 `json:"usage_percent"`
+	System     float64     `json:"system_time"`
+	Idle       float64     `json:"idle_time"`
+	Usage      float64     `json:"usage_percent"`
+	VcpuStatus *VcpuStatus `json:"vcpu_status,omitempty"` // MemInfo/DiskInfo 조회 시엔 null
 }
 
 type CoreMachineMemoryInfoResponse struct {
