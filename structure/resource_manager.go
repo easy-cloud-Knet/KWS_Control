@@ -156,6 +156,33 @@ func (rm *ResourceManager) DeallocateResources(core *Core, uuid UUID, req Hardwa
 	core.FreeDisk += req.Disk
 }
 
+// ReleaseVM은 VM이 점유하던 인메모리 자원을 모두 해제 (Reserve+Attach+Register의 역연산).
+// Free* 복구 + VMInfoIdx/VMLocation/AliveVM 정리를 한 Lock 안에서 원자적으로 수행.
+// 멱등: 이미 해제된 VM에 다시 호출해도 Free*가 이중 복구되지 않는다(VMInfoIdx 존재 여부로 가드).
+// 해제할 자원을 찾았으면 true 반환.
+func (rm *ResourceManager) ReleaseVM(core *Core, uuid UUID) bool {
+	rm.mu.Lock()
+	defer rm.mu.Unlock()
+
+	released := false
+	if vm, ok := core.VMInfoIdx[uuid]; ok {
+		core.FreeMemory += vm.Memory
+		core.FreeCPU += vm.Cpu
+		core.FreeDisk += vm.Disk
+		delete(core.VMInfoIdx, uuid)
+		released = true
+	}
+	delete(rm.VMLocation, uuid)
+
+	for i, v := range rm.AliveVM {
+		if v.UUID == uuid {
+			rm.AliveVM = slices.Delete(rm.AliveVM, i, i+1)
+			break
+		}
+	}
+	return released
+}
+
 // RegisterVM은 VMLocation 맵과 AliveVM 슬라이스에 VM을 동시에 등록
 func (rm *ResourceManager) RegisterVM(uuid UUID, core *Core, vm *VMInfo) {
 	rm.mu.Lock()

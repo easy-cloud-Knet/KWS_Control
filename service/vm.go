@@ -244,6 +244,12 @@ func DeleteVM(uuid vms.UUID, contextStruct *vms.ControlContext, rdb *redis.Clien
 		return fmt.Errorf("DeleteVM: failed to delete VM %s on core %s: %w", uuid, core.IP, err)
 	}
 
+	// Core 삭제 성공 -> 인메모리 자원 회수 (Free* 복구 + VMInfoIdx/VMLocation/AliveVM 정리)
+	if contextStruct.Resources.ReleaseVM(core, uuid) {
+		log.DebugInfo("released in-memory resources for VM %s on core %s: FreeMemory=%d, FreeCPU=%d, FreeDisk=%d",
+			uuid, core.IP, core.FreeMemory, core.FreeCPU, core.FreeDisk)
+	}
+
 	cmsClient := client.NewCmsClient()
 	if err := DeleteCmsSubnet(cmsClient, contextStruct, uuid); err != nil {
 		log.Error("DeleteVM: failed to delete CMS subnet for VM %s: %v", uuid, err)
