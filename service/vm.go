@@ -26,21 +26,25 @@ func CreateVM(input CreateVMInput, contextStruct *vms.ControlContext, rdb *redis
 
 	log.Info("func CreateVM() memory=%d GiB, cpu=%d, disk=%d GiB", hwReq.Memory, hwReq.CPU, hwReq.Disk, true)
 
-	// 1) 코어 선택
-	selectedCore, selectedCoreIndex, err := selectCoreOrFail(contextStruct, hwReq)
+	// 1) 코어 선택 + 자원 예약 (원자적: 선택과 Free* 차감이 한 락 안에서 → TOCTOU 제거)
+	selectedCore, selectedCoreIndex, err := reserveCoreOrFail(contextStruct, hwReq)
 	if err != nil {
 		return err
 	}
 
+	// 예약 직후 롤백 등록. 이후 모든 실패 경로는 cleanup.run()으로 예약을 되돌려야 함
+	cleanup := &cleanupChain{}
+	cleanup.push(func() {
+		contextStruct.Resources.DeallocateResources(selectedCore, uuid, hwReq)
+	})
+
 	// 2) SSH 키 생성
 	privateKeyPEM, publicKeyOpenSSH, err := internalssh.GenerateSSHKey()
 	if err != nil {
+		cleanup.run()
 		log.Error("GenerateSshKey() failed: %v", err, true)
 		return fmt.Errorf("CreateVM: failed to generate SSH key: %w", err)
 	}
-
-	// 단계별 롤백 등록을 위한 chain
-	cleanup := &cleanupChain{}
 
 	//사용자 수 확인
 	if len(input.Users) == 0 {
@@ -53,6 +57,7 @@ func CreateVM(input CreateVMInput, contextStruct *vms.ControlContext, rdb *redis
 	cmsResp, isNewSubnet, err := allocateCmsSubnet(contextStruct, input.SubnetType, uuid)
 	if err != nil {
 		//TODO  AllocateCmsSubnet cleanup logic implement
+		cleanup.run()
 		log.Error("CreateVM: failed to allocate CMS subnet: %v", err, true)
 		return fmt.Errorf("CreateVM: failed to allocate CMS subnet: %w", err)
 	}
@@ -83,11 +88,8 @@ func CreateVM(input CreateVMInput, contextStruct *vms.ControlContext, rdb *redis
 		IP_VM:        cmsResp.IP,
 	}
 
-	// 5) 코어 자원 할당 (VMInfoIdx + Free* 원자적 갱신)
-	contextStruct.Resources.AllocateResources(selectedCore, uuid, newVM, hwReq)
-	cleanup.push(func() {
-		contextStruct.Resources.DeallocateResources(selectedCore, uuid, hwReq)
-	})
+	// 5) 코어에 VM 메타데이터 부착 (Free* 예약은 ReserveCore에서 완료, 롤백은 위 cleanup이 담당)
+	contextStruct.Resources.AttachVMInfo(selectedCore, uuid, newVM)
 	log.DebugInfo("core %s updated: FreeMemory=%d, FreeCPU=%d, FreeDisk=%d",
 		selectedCore.IP, selectedCore.FreeMemory, selectedCore.FreeCPU, selectedCore.FreeDisk)
 
@@ -164,12 +166,13 @@ func buildCoreCreateVMRequest(input CreateVMInput, cmsResp *client.CmsNewInstanc
 	}
 }
 
-// selectCoreOrFail은 코어 선택 + 실패 시 진단 로그 출력 캡슐화를 진행
-func selectCoreOrFail(contextStruct *vms.ControlContext, req vms.HardwareRequirement) (*vms.Core, int, error) {
+// reserveCoreOrFail은 코어 선택+예약 + 실패 시 진단 로그 출력 캡슐화를 진행.
+// 성공 반환 시 해당 코어의 Free* 자원은 이미 예약(차감)된 상태 - 호출자는 실패 경로에서 롤백해야 함.
+func reserveCoreOrFail(contextStruct *vms.ControlContext, req vms.HardwareRequirement) (*vms.Core, int, error) {
 	log := util.GetLogger()
 
 	log.DebugInfo("core selection process. req: memory=%d GiB, cpu=%d, disk=%d", req.Memory, req.CPU, req.Disk)
-	result := contextStruct.Resources.SelectCore(req)
+	result := contextStruct.Resources.ReserveCore(req)
 
 	if result.Core != nil {
 		log.DebugInfo("core found: %s (idx=%d)", result.Core.IP, result.Index)

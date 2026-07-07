@@ -33,7 +33,7 @@ type HardwareRequirement struct {
 	Disk   uint32 // MiB
 }
 
-// CoreSelectionResult는 SelectCore의 반환값으로 진단 정보를 내포
+// CoreSelectionResult는 ReserveCore의 반환값으로 진단 정보를 내포
 type CoreSelectionResult struct {
 	Core       *Core
 	Index      int
@@ -94,11 +94,14 @@ func loadScore(c *Core, req HardwareRequirement) float64 {
 	return weighted + loadBalanceGain*variance
 }
 
-// SelectCore는 요청 자원을 만족하는 살아있는 코어 중 loadScore가 가장 낮은 코어를 선택.
-// 적합한 코어가 없으면 Core==nil로 반환하며, 진단 로그를 위한 카운트 정보를 함께 제공
-func (rm *ResourceManager) SelectCore(req HardwareRequirement) CoreSelectionResult {
-	rm.mu.RLock()
-	defer rm.mu.RUnlock()
+// ReserveCore는 요청 자원을 만족하는 살아있는 코어 중 loadScore가 가장 낮은 코어를
+// 선택하고, 같은 Lock 구간 안에서 즉시 Free* 자원을 차감(예약)한다.
+// fit 검사와 차감이 원자적이라 동시 호출 간 오버서브스크립션(Free* 언더플로)이 발생하지 않는다.
+// 네트워크 콜은 호출자가 락 밖에서 수행. 적합한 코어가 없으면 Core==nil(예약 없음)로 반환하며,
+// 진단 로그를 위한 카운트 정보를 함께 제공
+func (rm *ResourceManager) ReserveCore(req HardwareRequirement) CoreSelectionResult {
+	rm.mu.Lock()
+	defer rm.mu.Unlock()
 
 	result := CoreSelectionResult{
 		Index:      -1,
@@ -122,11 +125,17 @@ func (rm *ResourceManager) SelectCore(req HardwareRequirement) CoreSelectionResu
 			result.Index = i
 		}
 	}
+
+	if result.Core != nil { // 락 안에서 즉시 예약 -> TOCTOU 제거
+		result.Core.FreeMemory -= req.Memory
+		result.Core.FreeCPU -= req.CPU
+		result.Core.FreeDisk -= req.Disk
+	}
 	return result
 }
 
-// AllocateResources는 코어의 VMInfoIdx 맵에 VM을 등록하고 Free* 필드를 차감
-func (rm *ResourceManager) AllocateResources(core *Core, uuid UUID, vm *VMInfo, req HardwareRequirement) {
+// AttachVMInfo는 예약된 코어에 VM 메타데이터를 등록 (Free* 차감은 ReserveCore에서 이미 완료).
+func (rm *ResourceManager) AttachVMInfo(core *Core, uuid UUID, vm *VMInfo) {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
 
@@ -134,12 +143,9 @@ func (rm *ResourceManager) AllocateResources(core *Core, uuid UUID, vm *VMInfo, 
 		core.VMInfoIdx = make(map[UUID]*VMInfo)
 	}
 	core.VMInfoIdx[uuid] = vm
-	core.FreeMemory -= req.Memory
-	core.FreeCPU -= req.CPU
-	core.FreeDisk -= req.Disk
 }
 
-// DeallocateResources는 AllocateResources의 역연산
+// DeallocateResources는 ReserveCore(예약) + AttachVMInfo(부착)의 역연산 (롤백)
 func (rm *ResourceManager) DeallocateResources(core *Core, uuid UUID, req HardwareRequirement) {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
