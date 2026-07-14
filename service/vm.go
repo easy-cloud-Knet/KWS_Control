@@ -115,6 +115,24 @@ func CreateVM(input CreateVMInput, contextStruct *vms.ControlContext, rdb *redis
 		return fmt.Errorf("CreateVM: failed to create VM on core %s: %w", selectedCore.IP, err)
 	}
 
+	// 코어 생성 성공 이후의 실패 발생 시 처리
+	cleanup.push(func() {
+		log.Info("clean up: requesting VM deletion on core %s for %s", selectedCore.IP, uuid, true)
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		if _, err := coreClient.DeleteVM(ctx, model.DeleteVMRequest{
+			UUID: uuid,
+			Type: model.HardDelete,
+		}); err != nil {
+			// 삭제 실패 자체가 롤백을 중단시키지 않도록.
+			log.Error("rollback: failed to delete VM %s on core %s (manual cleanup or core GC required): %v",
+				uuid, selectedCore.IP, err, true)
+		}
+		if err := RemoveVMInfoFromRedis(ctx, rdb, uuid); err != nil {
+			log.Warn("rollback: failed to remove vm info from redis: %v", err, true)
+		}
+	})
+
 	// 8) DB에 인스턴스 정보 영속화
 	if err := contextStruct.VMRepo.AddInstance(newVM, selectedCoreIndex); err != nil {
 		log.Error("Error database instance insertion failed: %v", err, true)
