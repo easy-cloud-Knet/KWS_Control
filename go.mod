@@ -1,8 +1,6 @@
 module github.com/easy-cloud-Knet/KWS_Control
 
-go 1.24
-
-toolchain go1.24.3
+go 1.25.0
 
 require (
 	github.com/aws/aws-sdk-go-v2 v1.41.7
@@ -12,7 +10,7 @@ require (
 	github.com/go-sql-driver/mysql v1.9.2
 	github.com/redis/go-redis/v9 v9.11.0
 	github.com/sirupsen/logrus v1.9.3
-	golang.org/x/crypto v0.39.0
+	golang.org/x/crypto v0.52.0
 	golang.org/x/sync v0.13.0
 	gopkg.in/yaml.v3 v3.0.1
 )
@@ -35,5 +33,5 @@ require (
 	github.com/aws/smithy-go v1.25.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
-	golang.org/x/sys v0.33.0 // indirect
+	golang.org/x/sys v0.45.0 // indirect
 )
