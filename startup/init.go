@@ -214,19 +214,23 @@ func InitializeCoreData(configPath string) (structure.ControlContext, error) {
 				currentCore.IsAlive = false
 				return fmt.Errorf("failed to get Disk info for core %s:%d: %w", currentCore.IP, currentCore.Port, err)
 			}
+			cpuResp, err := coreClient.GetCoreMachineCpuInfo(ctx)
+			if err != nil {
+				currentCore.IsAlive = false
+				return fmt.Errorf("failed to get CPU info for core %s:%d: %w", currentCore.IP, currentCore.Port, err)
+			}
+			if cpuResp == nil || cpuResp.VcpuStatus == nil {
+				currentCore.IsAlive = false
+				return fmt.Errorf("core %s:%d returned no vcpu_status in CPU info", currentCore.IP, currentCore.Port)
+			}
 
 			totalMemoryMiB := uint32(memResp.Total * 1024)
 			totalDiskMiB := uint32(diskResp.Total * 1024)
 			freeMemoryMiB := uint32(memResp.Available * 1024)
 			freeDiskMiB := uint32(diskResp.Free * 1024)
 
-			var totalCpuCores uint32
-			if currentCore.CoreInfoIdx.Cpu > 0 {
-				totalCpuCores = currentCore.CoreInfoIdx.Cpu
-			} else {
-				log.DebugInfo("currentCore.CoreInfoIdx.Cpu: %d", currentCore.CoreInfoIdx.Cpu)
-				totalCpuCores = 9999 // 음 코어를 현재 반환받지 못하는-
-			}
+			totalCpuCores := cpuResp.VcpuStatus.Total
+			freeCpuCores := cpuResp.VcpuStatus.Idle
 
 			currentCore.CoreInfoIdx.Cpu = totalCpuCores
 			currentCore.CoreInfoIdx.Memory = totalMemoryMiB
@@ -234,7 +238,7 @@ func InitializeCoreData(configPath string) (structure.ControlContext, error) {
 
 			currentCore.FreeDisk = freeDiskMiB
 			currentCore.FreeMemory = freeMemoryMiB
-			currentCore.FreeCPU = totalCpuCores
+			currentCore.FreeCPU = freeCpuCores
 
 			return nil
 		})
