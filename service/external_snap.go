@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/easy-cloud-Knet/KWS_Control/client"
+	"github.com/easy-cloud-Knet/KWS_Control/client/model"
 	vms "github.com/easy-cloud-Knet/KWS_Control/structure"
 )
 
@@ -52,9 +53,13 @@ func TakeSnapshot(uuid vms.UUID, snapName string, ctx *vms.ControlContext) error
 		return fmt.Errorf("TakeSnapshot %s: failed to generate presigned URL: %w", uuid, err)
 	}
 
-	// TODO: coreClient.TakeSnapshot(context.Background(), model.TakeSnapshotRequest{
-	//     UUID: uuid, SnapKey: snapName, PresignedURL: presignedURL,
-	// })
-	_ = presignedURL
+	coreClient := client.NewCoreClient(core)
+	if _, err := coreClient.TakeExternalSnapshot(context.Background(), model.TakeSnapshotRequest{
+		UUID:         uuid,
+		SnapKey:      snapName,
+		PresignedURL: presignedURL,
+	}); err != nil {
+		return fmt.Errorf("TakeSnapshot %s: core failed: %w", uuid, err)
+	}
 	return nil
 }

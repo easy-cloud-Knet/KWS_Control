@@ -183,3 +183,17 @@ func (c *CoreClient) ForceShutdownVM(ctx context.Context, req model.ForceShutdow
 	}
 	return response, nil
 }
+
+// TakeExternalSnapshot asks Core to take a snapshot and upload it to RustFS via the given presigned PUT URL.
+// Uses a dedicated HTTP client with a 12-minute timeout because snapshot creation + upload can take several minutes.
+func (c *CoreClient) TakeExternalSnapshot(ctx context.Context, req model.TakeSnapshotRequest) (model.TakeSnapshotResponse, error) {
+	snapClient := &CoreClient{
+		baseURL: c.baseURL,
+		client:  &http.Client{Timeout: 12 * time.Minute},
+	}
+	var response model.TakeSnapshotResponse
+	if err := snapClient.doRequest(ctx, http.MethodPost, "/TakeExternalSnapshot", req, &response); err != nil {
+		return model.TakeSnapshotResponse{}, err
+	}
+	return response, nil
+}

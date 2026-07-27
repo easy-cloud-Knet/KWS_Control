@@ -10,5 +10,6 @@ type TakeSnapshotRequest struct {
 }
 
 type TakeSnapshotResponse struct {
-	Message string `json:"message,omitempty"`
+	UUID    string `json:"uuid"`
+	SnapKey string `json:"snapKey"`
 }
